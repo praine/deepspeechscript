@@ -212,8 +212,8 @@ app.post('/transcribe', async(req, res) => {
 			// model creation at this point to be able to switch scorer here
             // we will load diff lang models (Eng. vocab sets) depending on the vocab param
             var usescorer = STD_SCORER;
-            if(vocab && vocab!=='none'){
-              usescorer = './scorers/id-' + vocab + '.scorer';
+            if(scorer && scorer!=='none'){
+              usescorer = './scorers/id-' + scorer + '.scorer';
               if (!fs.existsSync(usescorer)) {
                   usescorer = STD_SCORER;
               }
