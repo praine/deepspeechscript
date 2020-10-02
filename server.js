@@ -200,6 +200,7 @@ app.post('/transcribe', async(req, res) => {
 			//Use the name of the input field (i.e. "audioFile") to retrieve the uploaded file
             // you may have to change it 
 			let audio_input = req.files.audioFile;
+			let scorer = req.body.scorer;
             
 			//Use the mv() method to save the file in upload directory (i.e. "uploads")
 			audio_input.mv('./uploads/' + audio_input.name);
@@ -207,11 +208,21 @@ app.post('/transcribe', async(req, res) => {
             // get Length for initial testing
 			const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
 			console.log('- audio length', audioLength);
+			
+			// model creation at this point to be able to switch scorer here
+            // we will load diff lang models (Eng. vocab sets) depending on the vocab param
+            var usescorer = STD_SCORER;
+            if(vocab && vocab!=='none'){
+              usescorer = './scorers/id-' + vocab + '.scorer';
+              if (!fs.existsSync(usescorer)) {
+                  usescorer = STD_SCORER;
+              }
+             }
 
 			// model creation at this point to be able to switch scorer here
-			var model = createModel(STD_MODEL, STD_SCORER);
+			var model = createModel(STD_MODEL, usescorer);
 			// running inference with await to wait for transcription
-                        var inputType = 'auto';
+            var inputType = 'auto';
 			var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
 			
             // to see metadata uncomment next line
@@ -225,7 +236,8 @@ app.post('/transcribe', async(req, res) => {
 				status: true,
 				message: 'File uploaded and transcribed.',
 				data: {
-					results: transcription
+					transcript: transcription,
+                    result: 'success'
 				}
 			});
 		}
