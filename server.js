@@ -203,7 +203,8 @@ app.post('/transcribe', async(req, res) => {
 			let scorer = req.body.scorer;
             
 			//Use the mv() method to save the file in upload directory (i.e. "uploads")
-			audio_input.mv('./uploads/' + audio_input.name);
+			var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
+			audio_input.mv('./uploads/' + tmpname);
 
             // get Length for initial testing
 			const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
@@ -240,6 +241,9 @@ app.post('/transcribe', async(req, res) => {
                     result: 'success'
 				}
 			});
+			
+			//delete temp file
+			deleteFile('./uploads/' + tmpname);
 		}
 	} catch (err) {
 		console.log("ERROR");
