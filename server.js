@@ -200,34 +200,51 @@ app.post('/transcribe', async(req, res) => {
 			//Use the name of the input field (i.e. "audioFile") to retrieve the uploaded file
             // you may have to change it 
 			let audio_input = req.files.audioFile;
-            
+			let scorer = req.body.scorer;
+
 			//Use the mv() method to save the file in upload directory (i.e. "uploads")
-			audio_input.mv('./uploads/' + audio_input.name);
+			var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
+			audio_input.mv('./uploads/' + tmpname);
 
             // get Length for initial testing
 			const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
 			console.log('- audio length', audioLength);
 
 			// model creation at this point to be able to switch scorer here
-			var model = createModel(STD_MODEL, STD_SCORER);
+            // we will load diff lang models (Eng. vocab sets) depending on the vocab param
+            var usescorer = STD_SCORER;
+            if(scorer && scorer!=='none'){
+              usescorer = './scorers/id-' + scorer + '.scorer';
+              if (!fs.existsSync(usescorer)) {
+                  usescorer = STD_SCORER;
+              }
+             }
+
+			// model creation at this point to be able to switch scorer here
+			var model = createModel(STD_MODEL, usescorer);
 			// running inference with await to wait for transcription
-                        var inputType = 'auto';
+            var inputType = 'auto';
+
 			var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
-			
+
             // to see metadata uncomment next line
 			// console.log(JSON.stringify(metadata, " ", 2));
-            
+
             var transcription = metadataToString(metadata);
             console.log("Transcription: " + transcription);
-            
+
 			//send response
 			res.send({
 				status: true,
 				message: 'File uploaded and transcribed.',
 				data: {
-					results: transcription
+					transcript: transcription,
+                                       result: 'success'
 				}
 			});
+
+			//delete temp file
+			deleteFile('./uploads/' + tmpname);
 		}
 	} catch (err) {
 		console.log("ERROR");
@@ -496,8 +513,13 @@ app.get('/scorerbuilder', (req, res) => {
 const port = process.env.PORT || 3000;
 // HTTPS options, paths are given by let's encrypt certbot
 var options = {
+<<<<<<< HEAD
   key: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/privkey.pem'),
   cert: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/fullchain.pem')
+=======
+  key: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/fullchain.pem')
+>>>>>>> 7f29d7ca74d811e4dcfc63c4275af1bf9b3fbe2d
 };
 var server = https.createServer(options, app);
 server.listen(port, () =>
