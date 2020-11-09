@@ -585,11 +585,16 @@ var options = {
   //cert: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/fullchain.pem')
   // key: fs.readFileSync('/etc/letsencrypt/live/dssydney.poodll.com/privkey.pem'),
  // cert: fs.readFileSync('/etc/letsencrypt/live/dssydney.poodll.com/fullchain.pem')
- // key: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/privkey.pem'),
- // cert: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/fullchain.pem')
+  key: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/fullchain.pem')
 };
-//var server = https.createServer(options, app);
-var server = http.createServer(options, app);
+
+//for HTTP choose a cert and key and use line below
+var server = https.createServer(options, app);
+
+//for http comment out all cert optons (or leave them?) and server line
+//var server = http.createServer(options, app);
+
 server.listen(port, () =>
 	console.log(`App is listening on port ${port}.`));
     
