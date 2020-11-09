@@ -338,19 +338,20 @@ app.post('/s3transcribeReturn', (req, res) => {
                                     }
                                 });
 
+                                //send response, maybe with some id?
+                                res.send({
+                                    status: true,
+                                    message: 's3transcribeReturn : File uploaded and transcribed .',
+                                    data: {
+                                        results: "nothing to declare"
+                                    }
+                                });
+
                                 //END OF THEN
                             }).catch(function (error) {
                                 console.log(error.message);
+                                res.status(500).send();
                             });
-
-                        //send response, maybe with some id?
-                        res.send({
-                            status: true,
-                            message: 'File uploaded and will be transcribed.',
-                            data: {
-                                results: "nothing to declare"
-                            }
-                        });
 
                     }else{
                         console.log("error", error);
