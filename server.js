@@ -25,8 +25,8 @@ const crypto = require('crypto');
  **************************************************/
 
 let STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
-	let STD_SCORER = "./deepspeech-0.7.3-models.scorer"
-	let STD_SAMPLE_RATE = 16000; // std for deepspeech
+let STD_SCORER = "./deepspeech-0.7.3-models.scorer"
+let STD_SAMPLE_RATE = 16000; // std for deepspeech
 
 /*************************************************
     Returns a model for given model and scorer path
@@ -340,8 +340,8 @@ app.post('/s3transcribeReturn', (req, res) => {
 
                                 //END OF THEN
                             }).catch(function (error) {
-                            console.log(error.message);
-                        });
+                                console.log(error.message);
+                            });
 
                         //send response, maybe with some id?
                         res.send({
@@ -357,10 +357,9 @@ app.post('/s3transcribeReturn', (req, res) => {
                         console.log('response',response);
 
                     } //end of if error\
-                }//end of if req get
+                })//end of if req get
         }//end of if audio file url
-								
-								
+
     } catch (err) {
             console.log("ERROR");
             console.log(err);
