@@ -276,10 +276,10 @@ app.post('/s3transcribeReturn', (req, res) => {
 				let audioFileUrl = req.body.audioFileUrl;
 				let audioFileType = req.body.audioFileType;
 				let vocab = req.body.vocab;
-				console.log("transcriptUrl", transcriptUrl);
-				console.log("metadataUrl", metadataUrl);
+				//console.log("transcriptUrl", transcriptUrl);
+			    //console.log("metadataUrl", metadataUrl);
 				console.log("audioFileUrl", audioFileUrl);
-				console.log("audioFileType", audioFileType);
+				//console.log("audioFileType", audioFileType);
 				console.log("vocab", vocab);
    
 
