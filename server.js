@@ -16,6 +16,7 @@ const Wav = require('node-wav');
 const request = require("request");
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 const crypto = require('crypto');
 
 /*************************************************
@@ -513,15 +514,13 @@ app.get('/scorerbuilder', (req, res) => {
 const port = process.env.PORT || 3000;
 // HTTPS options, paths are given by let's encrypt certbot
 var options = {
-<<<<<<< HEAD
-  key: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/fullchain.pem')
-=======
-  key: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/fullchain.pem')
->>>>>>> 7f29d7ca74d811e4dcfc63c4275af1bf9b3fbe2d
+ // key: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/privkey.pem'),
+ // cert: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/fullchain.pem')
+ // key: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/privkey.pem'),
+  //cert: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/fullchain.pem')
 };
-var server = https.createServer(options, app);
+//var server = https.createServer(options, app);
+var server = http.createServer(options, app);
 server.listen(port, () =>
 	console.log(`App is listening on port ${port}.`));
     
