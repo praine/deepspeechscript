@@ -226,26 +226,31 @@ app.post('/transcribe', async(req, res) => {
 			// running inference with await to wait for transcription
             var inputType = 'auto';
 
-			var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
+			//var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
+            convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
+                // to see metadata uncomment next line
+                // console.log(JSON.stringify(metadata, " ", 2));
 
-            // to see metadata uncomment next line
-			// console.log(JSON.stringify(metadata, " ", 2));
+                var transcription = metadataToString(metadata);
+                console.log("Transcription: " + transcription);
 
-            var transcription = metadataToString(metadata);
-            console.log("Transcription: " + transcription);
+                //send response
+                res.send({
+                    status: true,
+                    message: 'File uploaded and transcribed.',
+                    data: {
+                        transcript: transcription,
+                        result: 'success'
+                    }
+                });
 
-			//send response
-			res.send({
-				status: true,
-				message: 'File uploaded and transcribed.',
-				data: {
-					transcript: transcription,
-                                       result: 'success'
-				}
-			});
+                //delete temp file
+                deleteFile('./uploads/' + tmpname);
+            }).catch(function (error) {
+                console.log(error.message);
+                res.status(500).send();
+            });
 
-			//delete temp file
-			deleteFile('./uploads/' + tmpname);
 		}
 	} catch (err) {
 		console.log("ERROR");
