@@ -259,47 +259,113 @@ app.post('/transcribe', async(req, res) => {
     Main method for /transcribeReturn
     which returns after upload and saves result
  **************************************************/
-app.post('/transcribeReturn', (req, res) => {
+app.post('/s3transcribeReturn', (req, res) => {
 	try {
-		if (!req.files) {
-			res.send({
-				status: false,
-				message: 'No file uploaded'
-			});
+		if (!req.body.audioFileUrl) {
+	   
+				res.send({
+						status: false,
+						message: 'S3: No file uploaded'
+				});
+	   
 		} else {
-			console.log("*** start transcribeReturn ***");
+				console.log("*** start transcribe ***");
 
-			let audio_input = req.files.audioFile;
-			audio_input.mv('./uploads/' + audio_input.name);
-			const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
-			console.log('- audio length', audioLength);
-			var model = createModel(STD_MODEL, STD_SCORER);
-            var inputType = 'auto';
-            // this has changed
-			convertAndTranscribe(model, audio_input.data,inputType)
-                .then(function (metadata) {
-                    // this part is called once the promise returns with the metadata a little later
-                    var transcription = metadataToString(metadata);
-                    console.log("Transcription: " + transcription);
-                })
-                .catch(function (error) {
-                    console.log(error.message);
-                });
+				let transcriptUrl = decodeURIComponent(req.body.transcriptUrl);
+				let metadataUrl = decodeURIComponent(req.body.metadataUrl);
+				let audioFileUrl = req.body.audioFileUrl;
+				let audioFileType = req.body.audioFileType;
+				let vocab = req.body.vocab;
+				console.log("transcriptUrl", transcriptUrl);
+				console.log("metadataUrl", metadataUrl);
+				console.log("audioFileUrl", audioFileUrl);
+				console.log("audioFileType", audioFileType);
+				console.log("vocab", vocab);
+   
 
-			//send response, maybe with some id?
-			res.send({
-				status: true,
-				message: 'File uploaded and will be transcribed.',
-				data: {
-					results: "nothing to declare"
-				}
-			});
-		}
-	} catch (err) {
-		console.log("ERROR");
-		console.log(err);
-		res.status(500).send();
-	}
+				var requestOpts = {method: 'GET', url: audioFileUrl, encoding: null};
+				request.get(requestOpts, function (error, response, body) {
+                    if (!error && response.statusCode == 200) {
+                        var audioData = body;
+                        const audioLength = (audioData.length / 2) * (1 / STD_SAMPLE_RATE);
+                        console.log('- audio length', audioLength);
+
+                        // model creation at this point to be able to switch scorer here
+                        // we will load diff lang models (Eng. vocab sets) depending on the vocab param
+                        var usescorer = STD_SCORER;
+                        if (vocab && vocab !== 'none') {
+                            usescorer = './scorers/id-' + vocab + '.scorer';
+                            if (!fs.existsSync(usescorer)) {
+                                usescorer = STD_SCORER;
+                            }
+                        }
+                        console.log('using scorer:', usescorer);
+                        var model = createModel(STD_MODEL, usescorer);
+
+                        var inputType = audioFileType;
+
+                        convertAndTranscribe(model, audioData, inputType)
+                            .then(function (metadata) {
+                                // console.log(JSON.stringify(metadata, " ", 2));
+                                var transcription = metadataToString(metadata);
+                                var stringmetadata = metadataToAWSFormat(metadata, transcription);
+
+
+                                var putTranscriptOpts = {
+                                    url: transcriptUrl,
+                                    method: 'PUT',
+                                    body: transcription,
+                                    json: false,
+                                    headers: {'Content-Type': 'application/octet-stream'}
+                                };
+                                request.put(putTranscriptOpts, function (err, res, body) {
+                                    if (err) {
+                                        console.log('error posting transcript', err);
+                                    }
+                                    ;
+                                });
+
+                                var putMetadataOpts = {
+                                    url: metadataUrl,
+                                    method: 'PUT',
+                                    body: stringmetadata,
+                                    json: false,
+                                    headers: {'Content-Type': 'application/octet-stream'}
+                                };
+                                request.put(putMetadataOpts, function (err, res, body) {
+                                    if (err) {
+                                        console.log('error posting metadata transcript', err);
+                                    }
+                                });
+
+                                //END OF THEN
+                            }).catch(function (error) {
+                            console.log(error.message);
+                        });
+
+                        //send response, maybe with some id?
+                        res.send({
+                            status: true,
+                            message: 'File uploaded and will be transcribed.',
+                            data: {
+                                results: "nothing to declare"
+                            }
+                        });
+
+                    }else{
+                        console.log("error", error);
+                        console.log('response',response);
+
+                    } //end of if error\
+                }//end of if req get
+        }//end of if audio file url
+								
+								
+    } catch (err) {
+            console.log("ERROR");
+            console.log(err);
+            res.status(500).send();
+    }
 });
 
 
@@ -518,6 +584,10 @@ var options = {
  // cert: fs.readFileSync('/etc/letsencrypt/live/dstokyo.poodll.com/fullchain.pem')
  // key: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/privkey.pem'),
   //cert: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/fullchain.pem')
+  // key: fs.readFileSync('/etc/letsencrypt/live/dssydney.poodll.com/privkey.pem'),
+ // cert: fs.readFileSync('/etc/letsencrypt/live/dssydney.poodll.com/fullchain.pem')
+ // key: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/privkey.pem'),
+ // cert: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/fullchain.pem')
 };
 //var server = https.createServer(options, app);
 var server = http.createServer(options, app);
