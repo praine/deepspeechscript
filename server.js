@@ -750,7 +750,7 @@ app.post('/stt.php', async(req, res) => {
 
             //Use the mv() method to save the audio in upload directory (i.e. "uploads")
             //we need to wait for it to finish or the next steps dont work
-          // await audio_input.mv(audiopath);
+           await audio_input.mv(audiopath);
            await scorer.mv(scorerpath);
 
             console.log('using scorer:',scorerpath);
@@ -762,7 +762,9 @@ app.post('/stt.php', async(req, res) => {
             var inputType = 'auto';
 
             //var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
-            convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
+            var audiostream = fs.createReadStream(audiopath);
+           // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
+           convertAndTranscribe(model, audiostream,inputType).then(function (metadata) {
                 // to see metadata uncomment next line
                 // console.log(JSON.stringify(metadata, " ", 2));
 
