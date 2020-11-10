@@ -746,7 +746,7 @@ app.post('/stt.php', async(req, res) => {
             let scorer = req.files.scorer; //req.body.scorer;
             let tmpname = Math.random().toString(20).substr(2, 6);
             let audiopath = './uploads/'+ tmpname + '.mp3';
-            let scorerpath ='./uploads/'+  tmpname + '.txt';
+            let scorerpath ='./uploads/'+  tmpname + '.scorer';
 
             //Use the mv() method to save the audio in upload directory (i.e. "uploads")
             audio_input.mv(audiopath);
@@ -754,6 +754,8 @@ app.post('/stt.php', async(req, res) => {
 
             //save the scorer file
            // write2File(scorerpath, scorer);
+            console.log('using scorer:',scorerpath);
+            console.log('using audio:',audiopath);
 
             // model creation at this point to be able to switch scorer here
             var model = createModel(STD_MODEL, scorerpath);
@@ -779,8 +781,8 @@ app.post('/stt.php', async(req, res) => {
                 });
 
                 //delete temp files
-                deleteFile(audiopath);
-                deleteFile(scorerpath);
+              //  deleteFile(audiopath);
+              //  deleteFile(scorerpath);
             }).catch(function (error) {
                 console.log(error.message);
                 res.status(500).send();
