@@ -758,12 +758,12 @@ app.post('/stt.php', async(req, res) => {
 
             // model creation at this point to be able to switch scorer here
             var model = createModel(STD_MODEL, scorerpath);
-            // running inference with await to wait for transcription
-            var inputType = 'auto';
+
+            // set input type to auto for wav, or unknown but mp3 wont be guessed
+            var inputType = 'mp3';
 
            // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
-           // Buffer.from(new Uint8Array(req.file.buffer))
-           convertAndTranscribe(model, new Uint8Array(audio_input.buffer),inputType).then(function (metadata) {
+           convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
                 // to see metadata uncomment next line
                 // console.log(JSON.stringify(metadata, " ", 2));
 
