@@ -761,10 +761,9 @@ app.post('/stt.php', async(req, res) => {
             // running inference with await to wait for transcription
             var inputType = 'auto';
 
-            //var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
-            var audiostream = fs.createReadStream(audiopath);
            // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
-           convertAndTranscribe(model, audiostream,inputType).then(function (metadata) {
+           // Buffer.from(new Uint8Array(req.file.buffer))
+           convertAndTranscribe(model, new Uint8Array(audio_input.data),inputType).then(function (metadata) {
                 // to see metadata uncomment next line
                 // console.log(JSON.stringify(metadata, " ", 2));
 
@@ -867,15 +866,15 @@ var options = {
   //cert: fs.readFileSync('/etc/letsencrypt/live/dsuseast.poodll.com/fullchain.pem')
   // key: fs.readFileSync('/etc/letsencrypt/live/dssydney.poodll.com/privkey.pem'),
  // cert: fs.readFileSync('/etc/letsencrypt/live/dssydney.poodll.com/fullchain.pem')
-  key: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/fullchain.pem')
+ // key: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/privkey.pem'),
+ // cert: fs.readFileSync('/etc/letsencrypt/live/dsdublin.poodll.com/fullchain.pem')
 };
 
 //for HTTP choose a cert and key and use line below
-var server = https.createServer(options, app);
+//var server = https.createServer(options, app);
 
 //for http comment out all cert optons (or leave them?) and server line
-//var server = http.createServer(options, app);
+var server = http.createServer(options, app);
 
 server.listen(port, () =>
 	console.log(`App is listening on port ${port}.`));
