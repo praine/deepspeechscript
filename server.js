@@ -745,21 +745,18 @@ app.post('/stt.php', async(req, res) => {
             let audio_input = req.files.blob;
             let scorer = req.files.scorer;
             let tmpname = Math.random().toString(20).substr(2, 6);
-            let audiopath = './uploads/'+ tmpname + '.mp3';
             let scorerpath ='./uploads/'+  tmpname + '.scorer';
 
-            //Use the mv() method to save the audio in upload directory (i.e. "uploads")
+            //Use the mv() method to save the scorer in upload directory (i.e. "uploads")
             //we need to wait for it to finish or the next steps dont work
-           await audio_input.mv(audiopath);
            await scorer.mv(scorerpath);
+           //console.log('using scorer:',scorerpath);
 
-            console.log('using scorer:',scorerpath);
-            console.log('using audio:',audiopath);
 
             // model creation at this point to be able to switch scorer here
             var model = createModel(STD_MODEL, scorerpath);
 
-            // set input type to auto for wav, or unknown but mp3 wont be guessed
+            // set input type to "auto" for wav, or unknown but mp3 wont be guessed so need to use "mp3"
             var inputType = 'mp3';
 
            // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
@@ -781,8 +778,7 @@ app.post('/stt.php', async(req, res) => {
                 });
 
                 //delete temp files
-              //  deleteFile(audiopath);
-              //  deleteFile(scorerpath);
+                deleteFile(scorerpath);
             }).catch(function (error) {
                 console.log(error.message);
                 res.status(500).send();
