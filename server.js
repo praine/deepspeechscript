@@ -742,17 +742,18 @@ app.post('/stt.php', async(req, res) => {
         } else {
             console.log("*** start ttd transcribe ***");
             //retrieve audio and scorer
-            let audio_input = req.body.blob;
-            let scorer = req.body.scorer;
+            let audio_input = req.files.blob;
+            let scorer = req.files.scorer; //req.body.scorer;
             let tmpname = Math.random().toString(20).substr(2, 6);
             let audiopath = './uploads/'+ tmpname + '.mp3';
             let scorerpath ='./uploads/'+  tmpname + '.txt';
 
             //Use the mv() method to save the audio in upload directory (i.e. "uploads")
             audio_input.mv(audiopath);
+            scorer.mv(scorerpath);
 
             //save the scorer file
-            write2File(scorerpath, scorer);
+           // write2File(scorerpath, scorer);
 
             // model creation at this point to be able to switch scorer here
             var model = createModel(STD_MODEL, scorerpath);
