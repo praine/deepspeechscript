@@ -188,6 +188,8 @@ app.get('/', (req, res) => {
 
 /*************************************************
     Main method for /transcribe
+ takes wav files rom request from browser and returns trancscript
+ Called from Browser
  **************************************************/
 app.post('/transcribe', async(req, res) => {
 	try {
@@ -261,8 +263,9 @@ app.post('/transcribe', async(req, res) => {
 
 
 /*************************************************
-    Main method for /transcribeReturn
-    which returns after upload and saves result
+    Main method for /s3transcribeReturn
+    which returns after upload and saves result later ie async
+ Called from SQS->lambda->here
  **************************************************/
 app.post('/s3transcribeReturn', (req, res) => {
 	try {
@@ -376,6 +379,8 @@ app.post('/s3transcribeReturn', (req, res) => {
 
 /*************************************************
     Main method for /s3transcribe
+ synchroneous transcription, ie it blocks thread till returns
+ Called from SQS->lambda->here
  **************************************************/
 app.post('/s3transcribe', async(req, res) => {
         try {
@@ -502,6 +507,7 @@ app.post('/s3transcribe', async(req, res) => {
     Trigger building a new language model with KenLM
     
     !no concurrent calls, just one at a time!
+ Called from SQS->lambda->here
  **************************************************/
  
 const execFile = require('child_process').execFile;
@@ -579,7 +585,7 @@ app.get('/scorerbuilder', (req, res) => {
 
 /*************************************************
  SpellCheck Something
-
+ Called from SQS->lambda->here OR browser
 
  **************************************************/
 const SpellChecker = require('node-aspell');
@@ -624,8 +630,9 @@ app.post('/spellcheck',(req,res)=>{
 });
 
 /*************************************************
- Main method for /convertMedia
+ Main method for /convertMedia to mp3 ot mp4 with ffmpeg
  which returns after upload and saves result async
+ Called from SQS->lambda->here UNTESTED
  **************************************************/
 
 function downloadmedia(downloadurl, savepath, callback){
@@ -719,6 +726,129 @@ app.post('/convertMediaReturn', (req, res) => {
     }
 });
 
+
+/*************************************************
+ Main method for /stt.php
+ takes wav files + model from returns trancscript
+ Called from TTD server/browser
+ **************************************************/
+app.post('/stt.php', async(req, res) => {
+    try {
+        if (!req.files) {
+            res.send({
+                status: false,
+                message: 'No file uploaded'
+            });
+        } else {
+            console.log("*** start ttd transcribe ***");
+            //retrieve audio and scorer
+            let audio_input = req.body.blob;
+            let scorer = req.body.scorer;
+            let tmpname = Math.random().toString(20).substr(2, 6);
+            let audiopath = './uploads/'+ tmpname + '.mp3';
+            let scorerpath ='./uploads/'+  tmpname + '.txt';
+
+            //Use the mv() method to save the audio in upload directory (i.e. "uploads")
+            audio_input.mv(audiopath);
+
+            //save the scorer file
+            write2File(scorerpath, scorer);
+
+            // model creation at this point to be able to switch scorer here
+            var model = createModel(STD_MODEL, scorerpath);
+            // running inference with await to wait for transcription
+            var inputType = 'auto';
+
+            //var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
+            convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
+                // to see metadata uncomment next line
+                // console.log(JSON.stringify(metadata, " ", 2));
+
+                var transcription = metadataToString(metadata);
+                console.log("Transcription: " + transcription);
+
+                //send response
+                res.send({
+                    status: true,
+                    message: 'File transcribed.',
+                    data: {
+                        transcript: transcription,
+                        result: 'success'
+                    }
+                });
+
+                //delete temp files
+                deleteFile(audiopath);
+                deleteFile(scorerpath);
+            }).catch(function (error) {
+                console.log(error.message);
+                res.status(500).send();
+            });
+
+        }
+    } catch (err) {
+        console.log("ERROR");
+        console.log(err);
+        res.status(500).send();
+    }
+});
+
+/*************************************************
+ Main method for /lm.php
+ returns scorer or set of words
+ Called from TTD server/browser
+ **************************************************/
+app.get('/lm.php', (req, res) => {
+    var text = req.body.text;
+    console.log("** Build Scorer for " + text);
+
+    let tmpname = Math.random().toString(20).substr(2, 6);
+    let textpath = './uploads/'+ tmpname + '.txt';
+    let scorerpath = './uploads/'+ tmpname + '.scorer';
+    write2File(textpath, text + "\n");
+
+    // create new unique id
+    const hash = crypto.createHash('sha1');
+    hash.update(text);
+    var uid = 'id-' + hash.digest('hex');
+    var pathtoscorer = "./scorers/" + uid + ".scorer";
+    var pathtotext = "./scorers/" + uid + ".txt";
+    if (fs.existsSync(pathtoscorer)) {
+        console.log("** Scorer already existed **");
+        res.send({
+            status: true,
+            message: 'Scorer already existed',
+            data: {scorerID: uid}
+        });
+        return;
+    }else{
+
+        // run script that builds model, callback after that is done and we moved scorer
+        const child = execFile(path2buildDir + "mini-build-special-lm.sh", [tmpname], (error, stdout, stderr) => {
+            if (error) {
+                console.error('stderr', stderr);
+                throw error;
+            }
+            console.log('stdout', stdout);
+
+            // script is done, scorer is built, mv scorer and txt
+            moveFile(path2buildDir + "scorer", pathtoscorer);
+            moveFile(path2buildDir + "mini-lm.txt", pathtotext);
+
+            //send response
+            res.send({
+                status: true,
+                message: 'Scorer generated with given id below',
+                data: {
+                    scorerID: uid
+                }
+            });//end of res send
+            deleteFile(textpath);
+            deleteFile(scorerpath);
+        });//end of execfile
+    }//end of if pathtoscorer  exists
+
+});//end of app.get
 
 /*************************************************
     Start Webserver and run the file
