@@ -577,6 +577,148 @@ app.get('/scorerbuilder', (req, res) => {
     
 });//end of app.get
 
+/*************************************************
+ SpellCheck Something
+
+
+ **************************************************/
+//const spellChecker = require('node-aspell');
+
+app.post('/spellcheck',(req,res)=>{
+    try {
+        if (!req.body.passage) {
+
+            res.send({
+                status: false,
+                message: 'spellcheck: No passage included'
+            });
+
+        } else {
+            console.log("*** start spellcheck ***");
+
+            let lang= req.body.lang; //eg "en_US"
+            let passage = req.body.passage;
+            let vocab = req.body.vocab;
+
+            const checker = new SpellChecker.Spellchecker(lang);
+            let words = passage.split(' ');
+            let returndata={};
+            returndata.results =[];
+            for(var i=0;i<words.length;i++){
+                returndata.results[i] = !checker.isMisspelled(words[i]);
+            }
+            console.log(JSON.stringify(returndata));
+            //checker.isMisspelledAsync(word, callback)
+            //send response
+            res.send({
+                status: true,
+                message: 'Spell check complete.',
+                data: returndata
+            });
+        }
+    } catch (err) {
+        console.log("ERROR");
+        console.log(err);
+        res.status(500).send();
+    }
+});
+
+/*************************************************
+ Main method for /convertMedia
+ which returns after upload and saves result async
+ **************************************************/
+
+function downloadmedia(downloadurl, savepath, callback){
+    request.head(downloadurl, (err, res, body) => {
+        request(downloadurl)
+            .pipe(fs.createWriteStream(savepath))
+            .on('close', callback)
+    });
+}
+app.post('/convertMediaReturn', (req, res) => {
+    try {
+        if (!req.body.sourceUrl) {
+
+            res.send({
+                status: false,
+                message: 'convertMediaReturn: No file URL received'
+            });
+
+        } else {
+            console.log("*** start convert ***");
+
+            let destinationUrl = decodeURIComponent(req.body.destinationUrl);
+            let sourceUrl = decodeURIComponent(req.body.sourceUrl);
+            let mediaType = req.body.mediaType;
+            let format ="mp3";
+            let tmpfilename = Math.random().toString(20).substr(2, 6);
+            if(mediaType=='audio') {
+                tmpfilename += '.mp3';
+                format ="mp3";
+            }else{
+                tmpfilename += '.mp4';
+                format ="mp4";
+            }
+            console.log("destinationUrl ", destinationUrl );
+            console.log("sourceUrl ", sourceUrl );
+            console.log("mediaType", mediaType);
+            console.log("params", params);
+
+            //or request(audioFileUrl).pipe(fs.createWriteStream('./uploads/' + audioFilename));
+
+            downloadmedia(sourceUrl,tmpfilename,function () {
+
+
+                // make sure you set the correct path to your video file
+                var proc = ffmpeg('./uploads/' + tmpfilename)
+                    .format(format)
+                    // setup event handlers
+                    .on('end', function() {
+                        console.log('file has been converted succesfully');
+                        var putDestinationOpts = {
+                            url: destinationUrl,
+                            method: 'PUT',
+                            body: fs.createReadStream('./uploads/' + 'conv_' + tmpfilename),
+                            json: false,
+                            headers: {'Content-Type': 'application/octet-stream'}
+                        };
+                        request.put(putDestinationOpts, function (err, res, body) {
+                            if (err) {
+                                console.log('error posting converted file', err);
+                            }
+                            ;
+                        });
+
+                        //clean up
+                        deleteFile('./uploads/' + 'conv_' + tmpfilename);
+                        deleteFile('./uploads/' + tmpfilename);
+                    })
+                    .on('error', function(err) {
+                        console.log('an error happened: ' + err.message);
+                    })
+                    // save to file
+                    .save('./uploads/' + 'conv_' + tmpfilename);
+
+             });
+
+            //send response, maybe with some id?
+            res.send({
+                status: true,
+                message: 'convertMediaReturn : File conversion job started.',
+                data: {
+                    results: "nothing to declare"
+                }
+            });
+
+        }//end of if sourceurl
+
+    } catch (err) {
+        console.log("ERROR");
+        console.log(err);
+        res.status(500).send();
+    }
+});
+
 
 /*************************************************
     Start Webserver and run the file
