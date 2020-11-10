@@ -582,7 +582,7 @@ app.get('/scorerbuilder', (req, res) => {
 
 
  **************************************************/
-//const spellChecker = require('node-aspell');
+const SpellChecker = require('node-aspell');
 
 app.post('/spellcheck',(req,res)=>{
     try {
