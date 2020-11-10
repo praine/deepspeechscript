@@ -763,7 +763,7 @@ app.post('/stt.php', async(req, res) => {
 
            // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
            // Buffer.from(new Uint8Array(req.file.buffer))
-           convertAndTranscribe(model, new Uint8Array(audio_input.data),inputType).then(function (metadata) {
+           convertAndTranscribe(model, new Uint8Array(audio_input.buffer),inputType).then(function (metadata) {
                 // to see metadata uncomment next line
                 // console.log(JSON.stringify(metadata, " ", 2));
 
