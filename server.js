@@ -702,13 +702,15 @@ app.post('/convertMediaReturn', (req, res) => {
                             console.log('headers:', res.headers);
 
                             res.on('data', (d) => {
-                                console.log('data:',d);
+                              //  console.log('data:',d);
                             });
-                            deleteFile(ffmpegfolder + convfilename);
-                            deleteFile(ffmpegfolder + tmpfilename);
+                           // deleteFile(ffmpegfolder + convfilename);
+                           // deleteFile(ffmpegfolder + tmpfilename);
                         });
                         var readStream= fs.createReadStream(ffmpegfolder + convfilename);
                         readStream.on('open', function () {
+                            console.log('stream path:',  ffmpegfolder + convfilename);
+                            console.log('stream open ..piping:');
                             readStream.pipe(s3req);
                         });
 
