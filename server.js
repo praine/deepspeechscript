@@ -694,13 +694,16 @@ app.post('/convertMediaReturn', (req, res) => {
                            // url: destinationUrl,
                             method: 'PUT',
                            // body: fs.createReadStream(ffmpegfolder + convfilename),
-                            json: false,
+                           // json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
                         var req = https.request(destinationUrl,putDestinationOpts, (res) => {
-                            // response processing...
-                            //clean up
-                            console.log(res);
+                            console.log('statusCode:', res.statusCode);
+                            console.log('headers:', res.headers);
+
+                            res.on('data', (d) => {
+                                onsole.log('data:',d);
+                            });
                             deleteFile(ffmpegfolder + convfilename);
                             deleteFile(ffmpegfolder + tmpfilename);
                         });
