@@ -668,17 +668,18 @@ app.post('/convertMediaReturn', (req, res) => {
                 format ="mp4";
             }
             let convfilename ='conv_' + tmpfilename;
+            let ffmpegfolder ='./ffmpegwork/';
             console.log("destinationUrl ", destinationUrl );
             console.log("sourceUrl ", sourceUrl );
             console.log("mediaType", mediaType);
 
             //or request(audioFileUrl).pipe(fs.createWriteStream('./uploads/' + audioFilename));
 
-            downloadmedia(sourceUrl,tmpfilename,function () {
+            downloadmedia(sourceUrl,ffmpegfolder + tmpfilename,function () {
 
 
                 // make sure you set the correct path to your video file
-                var proc = ffmpeg('./uploads/' + tmpfilename)
+                var proc = ffmpeg(ffmpegfolder + tmpfilename)
                     .format(format)
                     // setup event handlers
                     .on('end', function() {
@@ -686,7 +687,7 @@ app.post('/convertMediaReturn', (req, res) => {
                         var putDestinationOpts = {
                             url: destinationUrl,
                             method: 'PUT',
-                            body: fs.createReadStream('./uploads/' + convfilename),
+                            body: fs.createReadStream(ffmpegfolder + convfilename),
                             json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
@@ -698,8 +699,8 @@ app.post('/convertMediaReturn', (req, res) => {
                         });
 
                         //clean up
-                        deleteFile('./uploads/' + convfilename);
-                        deleteFile('./uploads/' + tmpfilename);
+                        deleteFile(ffmpegfolder + convfilename);
+                        deleteFile(ffmpegfolder + tmpfilename);
                     })
                     .on('error', function(err) {
                         console.log('an error happened: ' + err.message);
