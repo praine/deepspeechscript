@@ -673,12 +673,12 @@ app.post('/convertMediaReturn', (req, res) => {
             console.log("sourceUrl ", sourceUrl );
             console.log("mediaType", mediaType);
 
+            //alternative download way
             //or request(audioFileUrl).pipe(fs.createWriteStream('./uploads/' + audioFilename));
 
+            //download then convert then delete.
+            //NB return is not waiting for processing to finish.
             downloadmedia(sourceUrl,ffmpegfolder + tmpfilename,function () {
-
-
-                // make sure you set the correct path to your video file
                 var proc = ffmpeg(ffmpegfolder + tmpfilename)
                     .format(format)
                     // setup event handlers
@@ -695,12 +695,11 @@ app.post('/convertMediaReturn', (req, res) => {
                             if (err) {
                                 console.log('error posting converted file', err);
                             }
-                            ;
+                            //clean up
+                            deleteFile(ffmpegfolder + convfilename);
+                            deleteFile(ffmpegfolder + tmpfilename);
                         });
 
-                        //clean up
-                        deleteFile(ffmpegfolder + convfilename);
-                        deleteFile(ffmpegfolder + tmpfilename);
                     })
                     .on('error', function(err) {
                         console.log('an error happened: ' + err.message);
