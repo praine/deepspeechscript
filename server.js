@@ -638,9 +638,9 @@ app.post('/spellcheck',(req,res)=>{
 
 function downloadmedia(downloadurl, savepath, callback){
     request.head(downloadurl, (err, res, body) => {
-        if (error) {
+        if (err) {
             console.error('stderr', stderr);
-            throw error;
+            throw err;
         }else {
             request(downloadurl)
                 .pipe(fs.createWriteStream(savepath))
