@@ -817,7 +817,9 @@ app.post('/stt.php', async(req, res) => {
  Called from TTD server/browser
  **************************************************/
 app.post('/lm.php', (req, res) => {
-    var text = req.body.text;
+    var data = req.body.data;
+    var dataobject = JSON.parse(data);
+    var text = dataobject.text;
     console.log("** Build Scorer for " + text);
 
     // create new unique id
