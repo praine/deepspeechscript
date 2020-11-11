@@ -797,7 +797,7 @@ app.post('/stt.php', async(req, res) => {
  returns scorer or set of words
  Called from TTD server/browser
  **************************************************/
-app.get('/lm.php', (req, res) => {
+app.post('/lm.php', (req, res) => {
     var text = req.body.text;
     console.log("** Build Scorer for " + text);
 
