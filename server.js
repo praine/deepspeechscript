@@ -662,6 +662,7 @@ app.post('/convertMediaReturn', (req, res) => {
             console.log("*** start convert ***");
 
             let destinationUrl = decodeURIComponent(req.body.destinationUrl);
+            destinationUrl = req.body.destinationUrl;
             let sourceUrl = decodeURIComponent(req.body.sourceUrl);
             let mediaType = req.body.mediaType;
             let format ="mp3";
