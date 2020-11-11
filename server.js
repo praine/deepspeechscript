@@ -801,11 +801,6 @@ app.get('/lm.php', (req, res) => {
     var text = req.body.text;
     console.log("** Build Scorer for " + text);
 
-    let tmpname = Math.random().toString(20).substr(2, 6);
-    let textpath = './uploads/'+ tmpname + '.txt';
-    let scorerpath = './uploads/'+ tmpname + '.scorer';
-    write2File(textpath, text + "\n");
-
     // create new unique id
     const hash = crypto.createHash('sha1');
     hash.update(text);
@@ -822,28 +817,41 @@ app.get('/lm.php', (req, res) => {
         return;
     }else{
 
+        let tmpname = Math.random().toString(20).substr(2, 6);
+        let tmp_textpath = path2buildDir + 'work/' + tmpname + '.txt';
+        let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
+        write2File(tmp_textpath, text + "\n");
+
         // run script that builds model, callback after that is done and we moved scorer
-        const child = execFile(path2buildDir + "mini-build-special-lm.sh", [tmpname], (error, stdout, stderr) => {
+        const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
             if (error) {
                 console.error('stderr', stderr);
                 throw error;
             }
             console.log('stdout', stdout);
 
-            // script is done, scorer is built, mv scorer and txt
-            moveFile(path2buildDir + "scorer", pathtoscorer);
-            moveFile(path2buildDir + "mini-lm.txt", pathtotext);
+            fs.readFile(tmp_scorerpath, function(err,data)
+            {
+                if(err) {
+                    console.log(err)
+                }else {
+                    console.log(data.toString());
+                    let buff = new Buffer(data);
+                    let base64data = buff.toString('base64');
 
-            //send response
-            res.send({
-                status: true,
-                message: 'Scorer generated with given id below',
-                data: {
-                    scorerID: uid
+                    //send response
+                    res.send({
+                        status: true,
+                        message: 'Scorer generated with given id below',
+                        data: base64data
+                    });//end of res send
+
+                    // script is done, scorer is built, mv scorer and txt
+                    moveFile(tmp_scorerpath, pathtoscorer);
+                    moveFile(tmp_textpath, pathtotext);
                 }
-            });//end of res send
-            deleteFile(textpath);
-            deleteFile(scorerpath);
+            });
+
         });//end of execfile
     }//end of if pathtoscorer  exists
 
