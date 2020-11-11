@@ -744,7 +744,7 @@ app.post('/convertMediaReturn', (req, res) => {
  takes wav files + model from returns trancscript
  Called from TTD server/browser
  **************************************************/
-app.post('/stt.php', async(req, res) => {
+app.post('/stt', async(req, res) => {
     try {
         if (!req.files) {
             res.send({
@@ -823,7 +823,7 @@ app.post('/stt.php', async(req, res) => {
  concurrent use is safe
  Called from TTD server/browser
  **************************************************/
-app.post('/lm.php', (req, res) => {
+app.post('/lm', (req, res) => {
     var data = req.body.data;
     //var dataobject = JSON.parse(data);
     var text = data.text;
