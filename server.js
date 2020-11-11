@@ -809,12 +809,24 @@ app.post('/lm.php', (req, res) => {
     var pathtotext = "./scorers/" + uid + ".txt";
     if (fs.existsSync(pathtoscorer)) {
         console.log("** Scorer already existed **");
-        res.send({
-            status: true,
-            message: 'Scorer already existed',
-            data: {scorerID: uid}
+        fs.readFile(pathtoscorer, function(err,data)
+        {
+            if(err) {
+                console.log(err)
+            }else {
+                let buff = new Buffer(data);
+                let base64data = buff.toString('base64');
+
+                //send response
+                res.send({
+                    status: true,
+                    message: 'Scorer fetched',
+                    data: base64data
+                });//end of res send
+            }
+            return;
         });
-        return;
+
     }else{
 
         let tmpname = Math.random().toString(20).substr(2, 6);
@@ -835,14 +847,13 @@ app.post('/lm.php', (req, res) => {
                 if(err) {
                     console.log(err)
                 }else {
-                    console.log(data.toString());
                     let buff = new Buffer(data);
                     let base64data = buff.toString('base64');
 
                     //send response
                     res.send({
                         status: true,
-                        message: 'Scorer generated with given id below',
+                        message: 'Scorer generated',
                         data: base64data
                     });//end of res send
 
