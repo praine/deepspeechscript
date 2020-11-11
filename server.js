@@ -766,8 +766,8 @@ app.post('/stt.php', async(req, res) => {
           // await scorer.mv(scorerpath);
 
             let buff = new Buffer(scorer, 'base64');
-            let scorerdata = buff.toString('ascii');
-            await fsPromises.appendFile(scorerpath, scorerdata);
+            await fsPromises.writeFileSync(scorerpath, buff);
+           // await fsPromises.appendFile(scorerpath, scorerdata);
            //write2File(scorerpath,scorer);
 
            //console.log('using scorer:',scorerpath);
