@@ -692,11 +692,12 @@ app.post('/convertMediaReturn', (req, res) => {
                         var putDestinationOpts = {
                             url: destinationUrl,
                             method: 'PUT',
-                            body: fs.createReadStream(ffmpegfolder + convfilename),
+                           // body: fs.createReadStream(ffmpegfolder + convfilename),
                             json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
-                        request.put(putDestinationOpts, function (err, res, body) {
+
+                       var r = request.put(putDestinationOpts, function (err, res, body) {
                             if (err) {
                                 console.log('error posting converted file', err);
                             }else{
@@ -706,6 +707,7 @@ app.post('/convertMediaReturn', (req, res) => {
                             // deleteFile(ffmpegfolder + convfilename);
                             // deleteFile(ffmpegfolder + tmpfilename);
                         });
+                        fs.createReadStream(ffmpegfolder + convfilename).pipe(r);
 
                     })
                     .on('error', function(err) {
