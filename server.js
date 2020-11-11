@@ -638,9 +638,14 @@ app.post('/spellcheck',(req,res)=>{
 
 function downloadmedia(downloadurl, savepath, callback){
     request.head(downloadurl, (err, res, body) => {
-        request(downloadurl)
-            .pipe(fs.createWriteStream(savepath))
-            .on('close', callback)
+        if (error) {
+            console.error('stderr', stderr);
+            throw error;
+        }else {
+            request(downloadurl)
+                .pipe(fs.createWriteStream(savepath))
+                .on('close', callback)
+        }
     });
 }
 app.post('/convertMediaReturn', (req, res) => {
@@ -694,6 +699,8 @@ app.post('/convertMediaReturn', (req, res) => {
                         request.put(putDestinationOpts, function (err, res, body) {
                             if (err) {
                                 console.log('error posting converted file', err);
+                            }else{
+                                console.log('successfully posted converted file');
                             }
                             //clean up
                             deleteFile(ffmpegfolder + convfilename);
