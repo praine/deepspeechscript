@@ -707,7 +707,8 @@ app.post('/convertMediaReturn', (req, res) => {
                             deleteFile(ffmpegfolder + convfilename);
                             deleteFile(ffmpegfolder + tmpfilename);
                         });
-                        fs.createReadStream(ffmpegfolder + convfilename).pipe(req);
+                      //  fs.createReadStream(ffmpegfolder + convfilename).pipe(req);
+                        fs.createReadStream(ffmpegfolder + tmpfilename).pipe(req);
 /*
                        request.put(putDestinationOpts, function (err, res, body) {
                             if (err) {
