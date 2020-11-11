@@ -703,8 +703,8 @@ app.post('/convertMediaReturn', (req, res) => {
                                 console.log('successfully posted converted file');
                             }
                             //clean up
-                            deleteFile(ffmpegfolder + convfilename);
-                            deleteFile(ffmpegfolder + tmpfilename);
+                            // deleteFile(ffmpegfolder + convfilename);
+                            // deleteFile(ffmpegfolder + tmpfilename);
                         });
 
                     })
