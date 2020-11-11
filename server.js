@@ -818,8 +818,8 @@ app.post('/stt.php', async(req, res) => {
  **************************************************/
 app.post('/lm.php', (req, res) => {
     var data = req.body.data;
-    var dataobject = JSON.parse(data);
-    var text = dataobject.text;
+    //var dataobject = JSON.parse(data);
+    var text = data.text;
     console.log("** Build Scorer for " + text);
 
     // create new unique id
