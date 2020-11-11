@@ -833,7 +833,13 @@ app.post('/lm.php', (req, res) => {
         fs.readFile(pathtoscorer, function(err,data)
         {
             if(err) {
-                console.log(err)
+                console.log(err);
+                //send response
+                res.send({
+                    status: true,
+                    message: 'Scorer no good',
+                    result: "error"
+                });//end of res send
             }else {
                 let buff = new Buffer(data);
                 let base64data = buff.toString('base64');
@@ -842,7 +848,8 @@ app.post('/lm.php', (req, res) => {
                 res.send({
                     status: true,
                     message: 'Scorer fetched',
-                    data: base64data
+                    result: "success",
+                    scorer: base64data
                 });//end of res send
             }
             return;
@@ -866,7 +873,12 @@ app.post('/lm.php', (req, res) => {
             fs.readFile(tmp_scorerpath, function(err,data)
             {
                 if(err) {
-                    console.log(err)
+                    //send response
+                    res.send({
+                        status: true,
+                        message: 'Scorer no good',
+                        result: "error"
+                    });//end of res send
                 }else {
                     let buff = new Buffer(data);
                     let base64data = buff.toString('base64');
@@ -875,7 +887,8 @@ app.post('/lm.php', (req, res) => {
                     res.send({
                         status: true,
                         message: 'Scorer generated',
-                        data: base64data
+                        result: "success",
+                        scorer: base64data
                     });//end of res send
 
                     // script is done, scorer is built, mv scorer and txt
