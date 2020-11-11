@@ -706,7 +706,7 @@ app.post('/convertMediaReturn', (req, res) => {
                         console.log('an error happened: ' + err.message);
                     })
                     // save to file
-                    .save('./uploads/' + convfilename);
+                    .save(ffmpegfolder + convfilename);
 
              });
 
