@@ -264,7 +264,8 @@ app.post('/transcribe', async(req, res) => {
 
 /*************************************************
     Main method for /s3transcribeReturn
-    which returns after upload and saves result later ie async
+    This version should not block main thread
+    Could be made to return resp. to lambda before finish job, if we wanted that.
  Called from SQS->lambda->here
  **************************************************/
 app.post('/s3transcribeReturn', (req, res) => {
@@ -505,8 +506,7 @@ app.post('/s3transcribe', async(req, res) => {
 
 /*************************************************
     Trigger building a new language model with KenLM
-    
-    !no concurrent calls, just one at a time!
+   ONE AT A TIME : concurrent use is NOT safe
  Called from SQS->lambda->here
  **************************************************/
  
@@ -666,10 +666,10 @@ app.post('/convertMediaReturn', (req, res) => {
                 tmpfilename += '.mp4';
                 format ="mp4";
             }
+            let convfilename ='conv_' + tmpfilename;
             console.log("destinationUrl ", destinationUrl );
             console.log("sourceUrl ", sourceUrl );
             console.log("mediaType", mediaType);
-            console.log("params", params);
 
             //or request(audioFileUrl).pipe(fs.createWriteStream('./uploads/' + audioFilename));
 
@@ -685,7 +685,7 @@ app.post('/convertMediaReturn', (req, res) => {
                         var putDestinationOpts = {
                             url: destinationUrl,
                             method: 'PUT',
-                            body: fs.createReadStream('./uploads/' + 'conv_' + tmpfilename),
+                            body: fs.createReadStream('./uploads/' + convfilename),
                             json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
@@ -697,14 +697,14 @@ app.post('/convertMediaReturn', (req, res) => {
                         });
 
                         //clean up
-                        deleteFile('./uploads/' + 'conv_' + tmpfilename);
+                        deleteFile('./uploads/' + convfilename);
                         deleteFile('./uploads/' + tmpfilename);
                     })
                     .on('error', function(err) {
                         console.log('an error happened: ' + err.message);
                     })
                     // save to file
-                    .save('./uploads/' + 'conv_' + tmpfilename);
+                    .save('./uploads/' + convfilename);
 
              });
 
@@ -744,8 +744,10 @@ app.post('/stt.php', async(req, res) => {
             //retrieve audio and scorer
             let audio_input = req.files.blob;
             let scorer = req.files.scorer;
+            let audiotype = req.body.audiotype;
             let tmpname = Math.random().toString(20).substr(2, 6);
             let scorerpath ='./uploads/'+  tmpname + '.scorer';
+            console.log('audiotype:',audiotype);
 
             //Use the mv() method to save the scorer in upload directory (i.e. "uploads")
             //we need to wait for it to finish or the next steps dont work
@@ -756,8 +758,13 @@ app.post('/stt.php', async(req, res) => {
             // model creation at this point to be able to switch scorer here
             var model = createModel(STD_MODEL, scorerpath);
 
-            // set input type to "auto" for wav, or unknown but mp3 wont be guessed so need to use "mp3"
+            // audiotype could be wav/webm/mp3 or auto
+            //auto will not work for mp3 though, so best to be specific
             var inputType = 'mp3';
+            if ( typeof audiotype !== 'undefined' && audiotype ){
+                inputType=audiotype;
+            }
+
 
            // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
            convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
@@ -794,7 +801,8 @@ app.post('/stt.php', async(req, res) => {
 
 /*************************************************
  Main method for /lm.php
- returns scorer or set of words
+ returns scorer for set of words and saves the scorer and text
+ concurrent use is safe
  Called from TTD server/browser
  **************************************************/
 app.post('/lm.php', (req, res) => {
