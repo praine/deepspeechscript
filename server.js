@@ -662,7 +662,6 @@ app.post('/convertMediaReturn', (req, res) => {
             console.log("*** start convert ***");
 
             let destinationUrl = decodeURIComponent(req.body.destinationUrl);
-            destinationUrl = req.body.destinationUrl;
             let sourceUrl = decodeURIComponent(req.body.sourceUrl);
             let mediaType = req.body.mediaType;
             let format ="mp3";
@@ -692,13 +691,13 @@ app.post('/convertMediaReturn', (req, res) => {
                     .on('end', function() {
                         console.log('file has been converted succesfully');
                         var putDestinationOpts = {
-                            url: destinationUrl,
+                           // url: destinationUrl,
                             method: 'PUT',
                            // body: fs.createReadStream(ffmpegfolder + convfilename),
                             json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
-                        var req = https.request(putDestinationOpts, (res) => {
+                        var req = https.request(destinationUrl,putDestinationOpts, (res) => {
                             // response processing...
                             //clean up
                             console.log(res);
