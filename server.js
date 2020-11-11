@@ -697,7 +697,7 @@ app.post('/convertMediaReturn', (req, res) => {
                            // json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
-                        var req = https.request(destinationUrl,putDestinationOpts, (res) => {
+                        var s3req = https.request(destinationUrl,putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
 
@@ -707,8 +707,12 @@ app.post('/convertMediaReturn', (req, res) => {
                             deleteFile(ffmpegfolder + convfilename);
                             deleteFile(ffmpegfolder + tmpfilename);
                         });
-                      //  fs.createReadStream(ffmpegfolder + convfilename).pipe(req);
-                        fs.createReadStream(ffmpegfolder + tmpfilename).pipe(req);
+                        var readStream= fs.createReadStream(ffmpegfolder + convfilename);
+                        readStream.on('open', function () {
+                            readStream.pipe(s3req);
+                        });
+
+                        //fs.createReadStream(ffmpegfolder + tmpfilename).pipe(req);
 /*
                        request.put(putDestinationOpts, function (err, res, body) {
                             if (err) {
