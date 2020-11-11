@@ -15,6 +15,7 @@ const Duplex = require('stream').Duplex;
 const Wav = require('node-wav');
 const request = require("request");
 const fs = require('fs');
+const fsPromises = fs.promises;
 const https = require('https');
 const http = require('http');
 const crypto = require('crypto');
@@ -762,8 +763,9 @@ app.post('/stt.php', async(req, res) => {
 
             //Use the mv() method to save the scorer in upload directory (i.e. "uploads")
             //we need to wait for it to finish or the next steps dont work
-           //await scorer.mv(scorerpath);
-            await fs.appendFile(scorerpath, scorer);
+          // await scorer.mv(scorerpath);
+
+            await fsPromises.appendFile(scorerpath, scorer);
            //write2File(scorerpath,scorer);
 
            //console.log('using scorer:',scorerpath);
