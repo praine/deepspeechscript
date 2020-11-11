@@ -700,11 +700,12 @@ app.post('/convertMediaReturn', (req, res) => {
                         var req = https.request(putDestinationOpts, (res) => {
                             // response processing...
                             //clean up
+                            console.log(res);
                             deleteFile(ffmpegfolder + convfilename);
                             deleteFile(ffmpegfolder + tmpfilename);
                         });
                         fs.createReadStream(ffmpegfolder + convfilename).pipe(req);
-
+/*
                        request.put(putDestinationOpts, function (err, res, body) {
                             if (err) {
                                 console.log('error posting converted file', err);
@@ -716,7 +717,7 @@ app.post('/convertMediaReturn', (req, res) => {
                             deleteFile(ffmpegfolder + convfilename);
                             deleteFile(ffmpegfolder + tmpfilename);
                         })
-
+*/
                     })
                     .on('error', function(err) {
                         console.log('an error happened: ' + err.message);
