@@ -754,7 +754,7 @@ app.post('/stt.php', async(req, res) => {
             console.log("*** start ttd transcribe ***");
             //retrieve audio and scorer
             let audio_input = req.files.blob;
-            let scorer = req.files.scorer;
+            let scorer = req.body.scorer;
             let audiotype = req.body.audiotype;
             let tmpname = Math.random().toString(20).substr(2, 6);
             let scorerpath ='./uploads/'+  tmpname + '.scorer';
@@ -762,7 +762,9 @@ app.post('/stt.php', async(req, res) => {
 
             //Use the mv() method to save the scorer in upload directory (i.e. "uploads")
             //we need to wait for it to finish or the next steps dont work
-           await scorer.mv(scorerpath);
+           //await scorer.mv(scorerpath);
+           write2File(scorerpath,scorer);
+
            //console.log('using scorer:',scorerpath);
 
 
