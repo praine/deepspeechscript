@@ -702,10 +702,11 @@ app.post('/convertMediaReturn', (req, res) => {
                                 console.log('error posting converted file', err);
                             }else{
                                 console.log('successfully posted converted file');
+                                console.log('body',body);
                             }
                             //clean up
-                            // deleteFile(ffmpegfolder + convfilename);
-                            // deleteFile(ffmpegfolder + tmpfilename);
+                            deleteFile(ffmpegfolder + convfilename);
+                            deleteFile(ffmpegfolder + tmpfilename);
                         });
                         fs.createReadStream(ffmpegfolder + convfilename).pipe(r);
 
