@@ -763,7 +763,8 @@ app.post('/stt.php', async(req, res) => {
             //Use the mv() method to save the scorer in upload directory (i.e. "uploads")
             //we need to wait for it to finish or the next steps dont work
            //await scorer.mv(scorerpath);
-           write2File(scorerpath,scorer);
+            await fs.appendFile(scorerpath, scorer);
+           //write2File(scorerpath,scorer);
 
            //console.log('using scorer:',scorerpath);
 
