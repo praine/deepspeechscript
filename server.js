@@ -766,10 +766,7 @@ app.post('/stt.php', async(req, res) => {
           // await scorer.mv(scorerpath);
 
             let buff = new Buffer(scorer, 'base64');
-            await fsPromises.writeFileSync(scorerpath, buff);
-           // await fsPromises.appendFile(scorerpath, scorerdata);
-           //write2File(scorerpath,scorer);
-
+            await fsPromises.appendFile(scorerpath, buff);
            //console.log('using scorer:',scorerpath);
 
 
@@ -796,17 +793,20 @@ app.post('/stt.php', async(req, res) => {
                 res.send({
                     status: true,
                     message: 'File transcribed.',
-                    data: {
-                        transcript: transcription,
-                        result: 'success'
-                    }
+                    transcript: transcription,
+                    result: 'success'
                 });
 
                 //delete temp files
                 deleteFile(scorerpath);
             }).catch(function (error) {
                 console.log(error.message);
-                res.status(500).send();
+               //send response
+               res.send({
+                   status: true,
+                   message: 'transcription failed miserably',
+                   result: 'error'
+               });
             });
 
         }
