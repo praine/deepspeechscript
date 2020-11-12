@@ -705,6 +705,8 @@ app.post('/convertMediaReturn', (req, res) => {
                             request.put(putDestinationOpts, function (err, res, body) {
                                 if (err) {
                                     console.log('error posting conv data', err);
+                                }else{
+                                    console.log('upload response', body);
                                 }
                             });
                         }else {
