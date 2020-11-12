@@ -657,8 +657,13 @@ app.post('/lt',(req,res)=>{
         var proxy = http.request(options, function (proxy_res) {
             res.send(proxy_res.body);
         });
-        req.write(data);
-        req.end();
+
+        proxy.on('error', error => {
+            console.error(error)
+        })
+
+        proxy.write(data);
+        proxy.end();
 
     } catch (err) {
         console.log("ERROR");
