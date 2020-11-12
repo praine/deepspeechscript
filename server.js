@@ -698,14 +698,19 @@ app.post('/convertMediaReturn', (req, res) => {
                            // json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
-                        var putDestinationOpts = url.parse(destinationUrl);
-                        putDestinationOpts.method="PUT";
-                        putDestinationOpts.headers={'Content-Type': 'application/octet-stream'};
+                        var putDestinationOpts = {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/octet-stream'}
+                        };
+                        var urlbits = url.parse(destinationUrl);
+                        putDestinationOpts.hostname=urlbits.hostname;
+                        putDestinationOpts.port=urlbits.port;
+                        putDestinationOpts.path=urlbits.path;
                         console.log(putDestinationOpts);
                         var s3req = https.request(putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
-                            console.log('body:',res.body);
+                            
 
                             //res.on('data', (d) => {
                               //  console.log('body:',res.body);
