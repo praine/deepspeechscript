@@ -692,7 +692,7 @@ app.post('/convertMediaReturn', (req, res) => {
                     .on('end', function() {
                         console.log('file has been converted succesfully');
 
-                        var streaming = false;
+                        var streaming = true;
                         if(!streaming) {
                             //READ Whole file and upload. yuk
                             var putDestinationOpts = {
