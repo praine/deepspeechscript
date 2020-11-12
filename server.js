@@ -701,7 +701,7 @@ app.post('/convertMediaReturn', (req, res) => {
                         var putDestinationOpts = url.parse(destinationUrl);
                         putDestinationOpts.method="PUT";
                         putDestinationOpts.headers={'Content-Type': 'application/octet-stream'};
-                        var s3req = https.request(destinationUrl,putDestinationOpts, (res) => {
+                        var s3req = https.request(putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
 
