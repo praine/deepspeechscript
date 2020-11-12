@@ -690,13 +690,16 @@ app.post('/convertMediaReturn', (req, res) => {
                     // setup event handlers
                     .on('end', function() {
                         console.log('file has been converted succesfully');
-                        var putDestinationOpts = {
+                        var xputDestinationOpts = {
                            // url: destinationUrl,
                             method: 'PUT',
                            // body: fs.createReadStream(ffmpegfolder + convfilename),
                            // json: false,
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
+                        var putDestinationOpts = url.parse(destinationUrl);
+                        putDestinationOpts.method="PUT";
+                        putDestinationOpts.headers={'Content-Type': 'application/octet-stream'};
                         var s3req = https.request(destinationUrl,putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
