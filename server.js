@@ -704,13 +704,13 @@ app.post('/convertMediaReturn', (req, res) => {
                         };
                         var urlbits = url.parse(destinationUrl);
                         putDestinationOpts.hostname=urlbits.hostname;
-                        putDestinationOpts.port=urlbits.port;
+                        putDestinationOpts.port=443;
                         putDestinationOpts.path=urlbits.path;
                         console.log(putDestinationOpts);
                         var s3req = https.request(putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
-                            
+
 
                             //res.on('data', (d) => {
                               //  console.log('body:',res.body);
