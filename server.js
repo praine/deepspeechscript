@@ -658,7 +658,9 @@ app.post('/lt',(req,res)=>{
             console.log('proxy response:',proxy_res.body);
             console.log('statusCode:', proxy_res.statusCode);
             console.log('headers:', proxy_res.headers);
-            res.send(proxy_res.body);
+            proxy_res.on('data', d => {
+                res.send(d);
+            })
         });
 
         proxy.write(data);
