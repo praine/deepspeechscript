@@ -701,13 +701,15 @@ app.post('/convertMediaReturn', (req, res) => {
                         var putDestinationOpts = url.parse(destinationUrl);
                         putDestinationOpts.method="PUT";
                         putDestinationOpts.headers={'Content-Type': 'application/octet-stream'};
+                        console.log(putDestinationOpts);
                         var s3req = https.request(putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
+                            console.log('body:',res.body);
 
-                            res.on('data', (d) => {
-                              //  console.log('data:',d);
-                            });
+                            //res.on('data', (d) => {
+                              //  console.log('body:',res.body);
+                            //});
                            // deleteFile(ffmpegfolder + convfilename);
                            // deleteFile(ffmpegfolder + tmpfilename);
                         });
