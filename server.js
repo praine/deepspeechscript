@@ -642,7 +642,7 @@ app.post('/spellcheck',(req,res)=>{
 app.post('/lt',(req,res)=>{
     try {
         var options = {
-            hostname: 'locahost',
+            hostname: 'localhost',
             port: 8081,
             path: '/v2/check',
             method: 'POST',
