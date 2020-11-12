@@ -632,6 +632,41 @@ app.post('/spellcheck',(req,res)=>{
     }
 });
 
+
+/*************************************************
+ Lang tool proxy
+ exects a lang tool server at local host on port 8081
+
+ **************************************************/
+
+app.post('/lt',(req,res)=>{
+    try {
+        var options = {
+            hostname: 'locahost',
+            port: 8081,
+            path: '/v2/check',
+            method: 'POST',
+            headers: req.headers
+        };
+
+        const data = JSON.stringify({
+            text: req.body.text,
+            language: req.body.language
+        })
+
+        var proxy = http.request(options, function (proxy_res) {
+            res.send(proxy_res.body);
+        });
+        req.write(data);
+        req.end();
+
+    } catch (err) {
+        console.log("ERROR");
+        console.log(err);
+        res.status(500).send();
+    }
+});
+
 /*************************************************
  Main method for /convertMedia to mp3 ot mp4 with ffmpeg
  which returns after upload and saves result async
