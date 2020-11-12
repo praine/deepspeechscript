@@ -641,12 +641,28 @@ app.post('/spellcheck',(req,res)=>{
 
 app.post('/lt',(req,res)=>{
     try {
+        var proxy = require('request');
+        proxy.post({
+            url:     'http://localhost:8081/v2/check',
+            form:    { text: req.body.text, language: req.body.language }
+        }, function(error, response, body){
+            if (error) {
+                console.log('error posting  data', error);
+            }else{
+                res.send(body);
+            }
+        });
+
+
+
+/*
         var options = {
             hostname: 'localhost',
             port: 8081,
             path: '/v2/check',
             method: 'POST'
         };
+
 
         var data = JSON.stringify({
             text: req.body.text,
@@ -655,7 +671,6 @@ app.post('/lt',(req,res)=>{
         console.log('data',data);
 
         var proxy = http.request(options, function (proxy_res) {
-            console.log('proxy response:',proxy_res.body);
             console.log('statusCode:', proxy_res.statusCode);
             console.log('headers:', proxy_res.headers);
             proxy_res.on('data', d => {
@@ -665,6 +680,7 @@ app.post('/lt',(req,res)=>{
 
         proxy.write(data);
         proxy.end();
+        */
 
     } catch (err) {
         console.log("ERROR");
