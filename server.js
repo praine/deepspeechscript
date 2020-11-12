@@ -718,7 +718,7 @@ app.post('/convertMediaReturn', (req, res) => {
                            // deleteFile(ffmpegfolder + convfilename);
                            // deleteFile(ffmpegfolder + tmpfilename);
                         });
-                        var readStream= fs.createReadStream(ffmpegfolder + convfilename);
+                        var readStream= fs.createReadStream(ffmpegfolder + 'xxx' + convfilename);
                         readStream.on('open', function () {
                             console.log('stream path:',  ffmpegfolder + convfilename);
                             console.log('stream open ..piping:');
