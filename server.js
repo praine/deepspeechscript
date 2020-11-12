@@ -691,26 +691,43 @@ app.post('/convertMediaReturn', (req, res) => {
                     // setup event handlers
                     .on('end', function() {
                         console.log('file has been converted succesfully');
-                        var putDestinationOpts = {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/octet-stream'}
-                        };
-                        var urlbits = url.parse(destinationUrl);
-                        putDestinationOpts.hostname=urlbits.hostname;
-                        putDestinationOpts.path=urlbits.path;
-                        putDestinationOpts.protocol="https:";
-                        console.log(putDestinationOpts);
-                        var s3req = https.request(putDestinationOpts, (res) => {
-                            console.log('statusCode:', res.statusCode);
-                            console.log('headers:', res.headers);
 
-                            deleteFile(ffmpegfolder + convfilename);
-                            deleteFile(ffmpegfolder + tmpfilename);
-                        });
-                        var readStream= fs.createReadStream(ffmpegfolder + convfilename);
-                        console.log('stream path:',  ffmpegfolder + convfilename);
-                        console.log('stream open ..piping:');
-                        readStream.pipe(s3req);
+                        var streaming = false;
+                        if(!streaming) {
+                            //READ Whole file and upload. yuk
+                            var putDestinationOpts = {
+                                url: destinationUrl,
+                                method: 'PUT',
+                                body: fs.readFileSync(ffmpegfolder + convfilename),
+                                json: false,
+                                headers: {'Content-Type': 'application/octet-stream'}
+                            };
+                            request.put(putDestinationOpts, function (err, res, body) {
+                                if (err) {
+                                    console.log('error posting conv data', err);
+                                }
+                            });
+                        }else {
+                            //STREAMING upload. I think AWS S3 does not support chunked uploads
+                            //The code below is *perfect*. But it just wont work.
+                            var putDestinationOpts = {
+                                method: 'PUT',
+                                headers: {'Content-Type': 'application/octet-stream'}
+                            };
+                            var urlbits = url.parse(destinationUrl);
+                            putDestinationOpts.hostname = urlbits.hostname;
+                            putDestinationOpts.path = urlbits.path;
+                            //console.log(putDestinationOpts);
+                            var s3req = https.request(putDestinationOpts, (res) => {
+                                console.log('statusCode:', res.statusCode);
+                                console.log('headers:', res.headers);
+
+                                deleteFile(ffmpegfolder + convfilename);
+                                deleteFile(ffmpegfolder + tmpfilename);
+                            });
+                            var readStream = fs.createReadStream(ffmpegfolder + convfilename);
+                            readStream.pipe(s3req);
+                        }
 
                     })
                     .on('error', function(err) {
