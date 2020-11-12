@@ -644,7 +644,7 @@ app.post('/lt',(req,res)=>{
         var proxy = require('request');
         proxy.post({
             url:     'http://localhost:8081/v2/check',
-            form:    { text: req.text, language: req.language }
+            form:    { text: req.body.text, language: req.body.language }
         }, function(error, response, body){
             if (error) {
                 console.log('error posting  data', error);
