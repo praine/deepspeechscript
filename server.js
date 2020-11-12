@@ -675,7 +675,7 @@ app.post('/convertMediaReturn', (req, res) => {
                 format ="mp4";
             }
             let convfilename ='conv_' + tmpfilename;
-            let ffmpegfolder ='./ffmpegwork/';
+            let ffmpegfolder ='/home/deepserver/ffmpegwork/';
             console.log("destinationUrl ", destinationUrl );
             console.log("sourceUrl ", sourceUrl );
             console.log("mediaType", mediaType);
