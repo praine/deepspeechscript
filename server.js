@@ -645,8 +645,7 @@ app.post('/lt',(req,res)=>{
             hostname: 'localhost',
             port: 8081,
             path: '/v2/check',
-            method: 'POST',
-            headers: req.headers
+            method: 'POST'
         };
 
         var data = JSON.stringify({
