@@ -691,54 +691,27 @@ app.post('/convertMediaReturn', (req, res) => {
                     // setup event handlers
                     .on('end', function() {
                         console.log('file has been converted succesfully');
-                        var xputDestinationOpts = {
-                           // url: destinationUrl,
-                            method: 'PUT',
-                           // body: fs.createReadStream(ffmpegfolder + convfilename),
-                           // json: false,
-                            headers: {'Content-Type': 'application/octet-stream'}
-                        };
                         var putDestinationOpts = {
                             method: 'PUT',
                             headers: {'Content-Type': 'application/octet-stream'}
                         };
                         var urlbits = url.parse(destinationUrl);
                         putDestinationOpts.hostname=urlbits.hostname;
-                        putDestinationOpts.port=443;
                         putDestinationOpts.path=urlbits.path;
+                        putDestinationOpts.protocol="https:";
                         console.log(putDestinationOpts);
                         var s3req = https.request(putDestinationOpts, (res) => {
                             console.log('statusCode:', res.statusCode);
                             console.log('headers:', res.headers);
 
-
-                            //res.on('data', (d) => {
-                              //  console.log('body:',res.body);
-                            //});
-                           // deleteFile(ffmpegfolder + convfilename);
-                           // deleteFile(ffmpegfolder + tmpfilename);
-                        });
-                        var readStream= fs.createReadStream(ffmpegfolder + 'xxx' + convfilename);
-                        readStream.on('open', function () {
-                            console.log('stream path:',  ffmpegfolder + convfilename);
-                            console.log('stream open ..piping:');
-                            readStream.pipe(s3req);
-                        });
-
-                        //fs.createReadStream(ffmpegfolder + tmpfilename).pipe(req);
-/*
-                       request.put(putDestinationOpts, function (err, res, body) {
-                            if (err) {
-                                console.log('error posting converted file', err);
-                            }else{
-                                console.log('successfully posted converted file');
-                                console.log('body',body);
-                            }
-                            //clean up
                             deleteFile(ffmpegfolder + convfilename);
                             deleteFile(ffmpegfolder + tmpfilename);
-                        })
-*/
+                        });
+                        var readStream= fs.createReadStream(ffmpegfolder + convfilename);
+                        console.log('stream path:',  ffmpegfolder + convfilename);
+                        console.log('stream open ..piping:');
+                        readStream.pipe(s3req);
+
                     })
                     .on('error', function(err) {
                         console.log('an error happened: ' + err.message);
