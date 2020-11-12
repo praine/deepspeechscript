@@ -649,18 +649,18 @@ app.post('/lt',(req,res)=>{
             headers: req.headers
         };
 
-        const data = JSON.stringify({
+        var data = JSON.stringify({
             text: req.body.text,
             language: req.body.language
-        })
+        });
+        console.log('data',data);
 
         var proxy = http.request(options, function (proxy_res) {
+            console.log('proxy response:',proxy_res.body);
+            console.log('statusCode:', proxy_res.statusCode);
+            console.log('headers:', proxy_res.headers);
             res.send(proxy_res.body);
         });
-
-        proxy.on('error', error => {
-            console.error(error)
-        })
 
         proxy.write(data);
         proxy.end();
