@@ -649,38 +649,10 @@ app.post('/lt',(req,res)=>{
             if (error) {
                 console.log('error posting  data', error);
             }else{
+                res.setHeader("Content-Type", "application/json");
                 res.send(body);
             }
         });
-
-
-
-/*
-        var options = {
-            hostname: 'localhost',
-            port: 8081,
-            path: '/v2/check',
-            method: 'POST'
-        };
-
-
-        var data = JSON.stringify({
-            text: req.body.text,
-            language: req.body.language
-        });
-        console.log('data',data);
-
-        var proxy = http.request(options, function (proxy_res) {
-            console.log('statusCode:', proxy_res.statusCode);
-            console.log('headers:', proxy_res.headers);
-            proxy_res.on('data', d => {
-                res.send(d);
-            })
-        });
-
-        proxy.write(data);
-        proxy.end();
-        */
 
     } catch (err) {
         console.log("ERROR");
