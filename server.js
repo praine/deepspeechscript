@@ -81,7 +81,7 @@ app.post('/spellcheck', (req, res) => {
       console.log(JSON.stringify(returndata));
       //checker.isMisspelledAsync(word, callback)
       //send response
-      res.send({
+      return res.send({
         result: "success",
         message: 'Spell check complete.',
         data: returndata
@@ -115,7 +115,7 @@ app.post('/lt', (req, res) => {
         console.log('error posting  data', error);
       } else {
         res.setHeader("Content-Type", "application/json");
-        res.send(body);
+        return res.send(body);
       }
     });
 
@@ -164,11 +164,7 @@ app.post('/stt', (req, res) => {
       .audioBitrate(16)
       .audioChannels(1)
       .withAudioFrequency(16000)
-      // setup event handlers
       .on('end', function() {
-
-        console.log('file has been converted succesfully');
-        //DO SOMETHING HERE
 
         var model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
         var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
@@ -176,15 +172,15 @@ app.post('/stt', (req, res) => {
 
         console.log("Transcript: " + metadataToString(result));
 
-        res.send({
+        deleteFile("uploads/" + tmpname + "_scorer");
+        deleteFile("uploads/" + tmpname + "_blob");
+        deleteFile("uploads/converted_" + tmpname + "_blob");
+
+        return res.send({
           result: "success",
           message: 'File transcribed.',
           transcript: metadataToString(result),
         });
-
-        deleteFile("uploads/" + tmpname + "_scorer");
-        deleteFile("uploads/" + tmpname + "_blob");
-        deleteFile("uploads/converted_" + tmpname + "_blob");
 
       })
       .on('error', function(err) {
@@ -218,29 +214,23 @@ app.post("/yt-subs", (req, res) => {
     });
   }
 
-    getSubtitles({
-      videoID: req.body.videoId,
-      lang: req.body.language
-    }).then(function(captions) {
-        return res.send({
-          result: "success",
-          captions: captions
-        });
-    }).catch(function(err){
-      return res.send({
-        result: "error",
-        message:"Could not retrieve captions!"
-      });
+  getSubtitles({
+    videoID: req.body.videoId,
+    lang: req.body.language
+  }).then(function(captions) {
+    return res.send({
+      result: "success",
+      captions: captions
     });
+  }).catch(function(err) {
+    return res.send({
+      result: "error",
+      message: "Could not retrieve captions!"
+    });
+  });
 
 });
 
-/*************************************************
- Main method for /lm.php
- returns scorer for set of words and saves the scorer and text
- concurrent use is safe
- Called from TTD server/browser
- **************************************************/
 app.post('/lm', (req, res) => {
   var data = req.body.data;
   var text = data.text;
@@ -251,7 +241,6 @@ app.post('/lm', (req, res) => {
   let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
   write2File(tmp_textpath, text + "\n");
 
-  // run script that builds model, callback after that is done and we moved scorer
   const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
     if (error) {
       console.error('stderr', stderr);
@@ -261,31 +250,30 @@ app.post('/lm', (req, res) => {
 
     fs.readFile(tmp_scorerpath, function(err, data) {
       if (err) {
-        //send response
-        res.send({
+        return res.send({
           message: 'Scorer no good',
           result: "error"
-        }); //end of res send
+        });
       } else {
         let buff = Buffer.from(data);
         let base64data = buff.toString('base64');
 
-        //send response
-        res.send({
+        deleteFile(tmp_scorerpath);
+        deleteFile(tmp_textpath);
+
+        return res.send({
           message: 'Scorer generated',
           result: "success",
           scorer: base64data
-        }); //end of res send
+        });
 
-        // script is done, scorer is built, mv scorer and txt
-        deleteFile(tmp_scorerpath);
-        deleteFile(tmp_textpath);
+
       }
     });
 
-  }); //end of execfile
+  });
 
-}); //end of app.post
+});
 
 const port = process.env.PORT || 3000;
 
