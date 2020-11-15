@@ -14,6 +14,7 @@ const http = require('http');
 const url = require('url');
 const fileUpload = require("express-fileupload");
 const ffmpeg = require("fluent-ffmpeg");
+const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 
 const STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
 const STD_SCORER = "./deepspeech-0.7.3-models.scorer"
@@ -58,8 +59,8 @@ app.post('/spellcheck', (req, res) => {
   try {
     if (!req.body.passage) {
 
-      res.send({
-        status: false,
+      return res.send({
+        result: "error",
         message: 'spellcheck: No passage included'
       });
 
@@ -81,7 +82,7 @@ app.post('/spellcheck', (req, res) => {
       //checker.isMisspelledAsync(word, callback)
       //send response
       res.send({
-        status: true,
+        result: "success",
         message: 'Spell check complete.',
         data: returndata
       });
@@ -139,14 +140,14 @@ app.post('/stt', (req, res) => {
 
     if (!req.files) {
       return res.send({
-        status: false,
+        result: "error",
         message: 'No file uploaded'
       });
     }
 
     if (!req.body.scorer) {
       return res.send({
-        status: false,
+        result: "error",
         message: 'No scorer uploaded'
       });
     }
@@ -172,14 +173,13 @@ app.post('/stt', (req, res) => {
         var model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
         var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
         var result = model.sttWithMetadata(audioBuffer);
-        
-        console.log("Transcript: "+metadataToString(result));
+
+        console.log("Transcript: " + metadataToString(result));
 
         res.send({
-          status: true,
+          result: "success",
           message: 'File transcribed.',
           transcript: metadataToString(result),
-          result: 'success'
         });
 
         deleteFile("uploads/" + tmpname + "_scorer");
@@ -201,6 +201,39 @@ app.post('/stt', (req, res) => {
   }
 
 })
+
+app.post("/yt-subs", (req, res) => {
+
+  if (!req.body.videoId) {
+    return res.send({
+      result: "error",
+      message: 'No videoId specified'
+    });
+  }
+
+  if (!req.body.language) {
+    return res.send({
+      result: "error",
+      message: 'No language specified'
+    });
+  }
+
+    getSubtitles({
+      videoID: req.body.videoId,
+      lang: req.body.language
+    }).then(function(captions) {
+        return res.send({
+          result: "success",
+          captions: captions
+        });
+    }).catch(function(err){
+      return res.send({
+        result: "error",
+        message:"Could not retrieve captions!"
+      });
+    });
+
+});
 
 /*************************************************
  Main method for /lm.php
@@ -230,7 +263,6 @@ app.post('/lm', (req, res) => {
       if (err) {
         //send response
         res.send({
-          status: true,
           message: 'Scorer no good',
           result: "error"
         }); //end of res send
@@ -240,7 +272,6 @@ app.post('/lm', (req, res) => {
 
         //send response
         res.send({
-          status: true,
           message: 'Scorer generated',
           result: "success",
           scorer: base64data
@@ -254,7 +285,7 @@ app.post('/lm', (req, res) => {
 
   }); //end of execfile
 
-}); //end of app.get
+}); //end of app.post
 
 const port = process.env.PORT || 3000;
 
