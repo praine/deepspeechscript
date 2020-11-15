@@ -130,15 +130,63 @@ function bufferToStream(buffer) {
 }
 
 /*************************************************
-    Use sox to convert any audio input to
+    Use FFMPEG to convert any audio input to
     mono 16bit PCM 16Khz
-    then run DeepSpeech in a stream, a bit hacky
-    as other sox libraries are unmaintained
-
+    then run DeepSpeech in a stream
+ 
     change sttWithMetadata() to stt() if needed
  **************************************************/
 
-function convertAndTranscribe(model, buffer, inputType) {
+function convertAndTranscribe(audiofile, scorerfile){
+    var convfile = audiofile + '_conv';
+
+    var proc = ffmpeg(audiofile)
+        .format('wav')
+        .audioCodec('pcm_s16le')
+        .audioBitrate(16)
+        .audioChannels(1)
+        .withAudioFrequency(STD_SAMPLE_RATE);
+
+        //return the promise we use as response
+        var thepromise = new Promise(function (resolve, reject) {
+            proc.on('end', () => {
+
+                console.log('file has been converted succesfully');
+
+                var model = createModel(STD_MODEL, scorerfile);
+                var audioBuffer = fs.readFileSync(convfile);
+                var result = model.sttWithMetadata(audioBuffer);
+
+                console.log("Transcript: "+metadataToString(result));
+
+                deleteFile(scorerfile);
+                deleteFile(audiofile);
+                deleteFile(convfile);
+
+                resolve(result);
+            });
+        });
+
+        //if we have an error
+        proc.on('error', function(err) {
+            console.log('an error happened: ' + err.message);
+        });
+
+        // save to file
+        proc.save(convfile);
+
+        //return our promise
+       return thepromise;
+}
+
+/*************************************************
+ The OLD method. We used sox to convert audio input to
+ mono 16bit PCM 16Khz
+ then run DeepSpeech in a stream
+ change sttWithMetadata() to stt() if needed
+ **************************************************/
+
+function convertAndTranscribeOLD(model, buffer, inputType) {
 	let audioStream = new MemoryStream();
         let soxOpts = {
                         global: {
@@ -226,13 +274,8 @@ app.post('/transcribe', async(req, res) => {
               }
              }
 
-			// model creation at this point to be able to switch scorer here
-			var model = createModel(STD_MODEL, usescorer);
-			// running inference with await to wait for transcription
-            var inputType = 'auto';
 
-			//var metadata = await convertAndTranscribe(model, audio_input.data,inputType);
-            convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
+            convertAndTranscribe(usescorer, './uploads/' + tmpname).then(function (metadata) {
                 // to see metadata uncomment next line
                 // console.log(JSON.stringify(metadata, " ", 2));
 
@@ -249,8 +292,6 @@ app.post('/transcribe', async(req, res) => {
                     }
                 });
 
-                //delete temp file
-                deleteFile('./uploads/' + tmpname);
             }).catch(function (error) {
                 console.log(error.message);
                 res.status(500).send();
@@ -312,11 +353,12 @@ app.post('/s3transcribeReturn', (req, res) => {
                             }
                         }
                         console.log('using scorer:', usescorer);
-                        var model = createModel(STD_MODEL, usescorer);
 
-                        var inputType = audioFileType;
+                        //Write audio file to disk
+                        var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
+                        fs.writeFileSync("uploads/" + tmpname, audioData);
 
-                        convertAndTranscribe(model, audioData, inputType)
+                        convertAndTranscribe("uploads/" + tmpname, usescorer)
                             .then(function (metadata) {
                                 // console.log(JSON.stringify(metadata, " ", 2));
                                 var transcription = metadataToString(metadata);
@@ -438,10 +480,13 @@ app.post('/s3transcribe', async(req, res) => {
                                  }
                               }
                               console.log('using scorer:', usescorer);
-                              var model = createModel(STD_MODEL,usescorer);
-                              // running inference with await to wait for transcription
-                              var inputType = audioFileType;
-                              var metadata = await convertAndTranscribe(model, audioData,inputType);
+
+                               //Write audio file to disk
+                               var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
+                               fs.writeFileSync("uploads/" + tmpname, audioData);
+
+                            //do the transcode and transcribe
+                            var metadata = await  convertAndTranscribe("uploads/" + tmpname, usescorer);
                         
                              // to see metadata uncomment next line
                              // console.log(JSON.stringify(metadata, " ", 2));
@@ -508,8 +553,8 @@ app.post('/s3transcribe', async(req, res) => {
 });
 
 /*************************************************
-    Trigger building a new language model with KenLM
-   ONE AT A TIME : concurrent use is NOT safe
+ Trigger building a new language model with KenLM
+ Should be safe for concurrent use (now)
  Called from SQS->lambda->here
  **************************************************/
  
@@ -541,9 +586,7 @@ function write2File (path, content) {
 app.get('/scorerbuilder', (req, res) => {
     var sentence = req.query.sentence;
     console.log("** Build Scorer for " + sentence);
-    
-    deleteFile(path2buildDir + "mini-new-sentence.txt");
-    write2File(path2buildDir + "mini-new-sentence.txt", sentence + "\n");
+
     
     // create new unique id
     const hash = crypto.createHash('sha1');
@@ -551,6 +594,8 @@ app.get('/scorerbuilder', (req, res) => {
     var uid = 'id-' + hash.digest('hex');
     var pathtoscorer = "./scorers/" + uid + ".scorer";
     var pathtotext = "./scorers/" + uid + ".txt";
+
+    //If model exists, terrific
     if (fs.existsSync(pathtoscorer)) {
         console.log("** Scorer already existed **");
         res.send({
@@ -559,32 +604,53 @@ app.get('/scorerbuilder', (req, res) => {
            data: {scorerID: uid}
         });
         return;
-    }else{
-    
-        // run script that builds model, callback after that is done and we moved scorer
-	const child = execFile(path2buildDir + "mini-build-special-lm.sh", [], (error, stdout, stderr) => {
-        if (error) {
-            console.error('stderr', stderr);
-            throw error;
-        }
-        console.log('stdout', stdout);
-        
-        // script is done, scorer is built, mv scorer and txt
-        moveFile(path2buildDir + "scorer", pathtoscorer);
-        moveFile(path2buildDir + "mini-lm.txt", pathtotext);
 
-        //send response
-        res.send({
-            status: true,
-            message: 'Scorer generated with given id below',
-            data: {
-                scorerID: uid
+    //If model not exists create it
+    }else{
+
+        let tmpname = Math.random().toString(20).substr(2, 6);
+        let tmp_textpath = path2buildDir + 'work/' + tmpname + '.txt';
+        let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
+        write2File(tmp_textpath, text + "\n");
+
+        // run script that builds model, callback after that is done and we moved scorer
+        const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
+            if (error) {
+                console.error('stderr', stderr);
+                throw error;
             }
-        });//end of res send
-      });//end of execfile
+            console.log('stdout', stdout);
+
+            fs.readFile(tmp_scorerpath, function(err,data)
+            {
+                if(err) {
+                    //send response
+                    res.send({
+                        status: true,
+                        message: 'Scorer no good',
+                        result: "error"
+                    });//end of res send
+                }else {
+
+                    //send response
+                    res.send({
+                        status: true,
+                        message: 'Scorer generated with given id below',
+                        data: {
+                            scorerID: uid
+                        }
+                    });//end of res send
+
+                    // script is done, scorer is built, mv scorer and txt
+                    moveFile(tmp_scorerpath, pathtoscorer);
+                    moveFile(tmp_textpath, pathtotext);
+                }
+            });
+
+        });//end of execfile
     }//end of if pathtoscorer  exists
-    
 });//end of app.get
+
 
 /*************************************************
  SpellCheck Something
@@ -625,35 +691,6 @@ app.post('/spellcheck',(req,res)=>{
                 data: returndata
             });
         }
-    } catch (err) {
-        console.log("ERROR");
-        console.log(err);
-        res.status(500).send();
-    }
-});
-
-
-/*************************************************
- Lang tool proxy
- exects a lang tool server at local host on port 8081
-
- **************************************************/
-
-app.post('/lt',(req,res)=>{
-    try {
-        var proxy = require('request');
-        proxy.post({
-            url:     'http://localhost:8081/v2/check',
-            form:    { text: req.body.text, language: req.body.language }
-        }, function(error, response, body){
-            if (error) {
-                console.log('error posting  data', error);
-            }else{
-                res.setHeader("Content-Type", "application/json");
-                res.send(body);
-            }
-        });
-
     } catch (err) {
         console.log("ERROR");
         console.log(err);
@@ -790,75 +827,102 @@ app.post('/convertMediaReturn', (req, res) => {
 
 /*************************************************
  Main method for /stt.php
- takes wav files + model from returns trancscript
+ returns transcription expects base 64 string scorer as param
+ concurrent use is safe
  Called from TTD server/browser
  **************************************************/
-app.post('/stt', async(req, res) => {
+app.post('/stt', (req, res) => {
+
+    console.log("/stt endpoint triggered");
+
     try {
+
         if (!req.files) {
-            res.send({
+            return res.send({
                 status: false,
                 message: 'No file uploaded'
             });
-        } else {
-            console.log("*** start ttd transcribe ***");
-            //retrieve audio and scorer
-            let audio_input = req.files.blob;
-            let scorer = req.body.scorer;
-            let audiotype = req.body.audiotype;
-            let tmpname = Math.random().toString(20).substr(2, 6);
-            let scorerpath ='./uploads/'+  tmpname + '.scorer';
-            console.log('audiotype:',audiotype);
+        }
 
-            //Use the mv() method to save the scorer in upload directory (i.e. "uploads")
-            //we need to wait for it to finish or the next steps dont work
-          // await scorer.mv(scorerpath);
+        if (!req.body.scorer) {
+            return res.send({
+                status: false,
+                message: 'No scorer uploaded'
+            });
+        }
 
-            let buff = new Buffer(scorer, 'base64');
-            await fsPromises.appendFile(scorerpath, buff);
-           //console.log('using scorer:',scorerpath);
+        var tmpname = Math.random().toString(20).substr(2, 6);
+        var b64scorer = req.body.scorer;
+        var buf = Buffer.from(b64scorer, 'base64');
+        fs.writeFileSync("uploads/" + tmpname + "_scorer", buf);
+        fs.writeFileSync("uploads/" + tmpname + "_blob", req.files.blob.data);
 
+        var proc = ffmpeg("uploads/" + tmpname + "_blob")
+            .format('wav')
+            .audioCodec('pcm_s16le')
+            .audioBitrate(16)
+            .audioChannels(1)
+            .withAudioFrequency(16000)
+            // setup event handlers
+            .on('end', function() {
 
-            // model creation at this point to be able to switch scorer here
-            var model = createModel(STD_MODEL, scorerpath);
+                console.log('file has been converted succesfully');
+                //DO SOMETHING HERE
 
-            // audiotype could be wav/webm/mp3 or auto
-            //auto will not work for mp3 though, so best to be specific
-            var inputType = 'mp3';
-            if ( typeof audiotype !== 'undefined' && audiotype ){
-                inputType=audiotype;
-            }
+                var model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
+                var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
+                var result = model.sttWithMetadata(audioBuffer);
 
+                console.log("Transcript: "+metadataToString(result));
 
-           // convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
-           convertAndTranscribe(model, audio_input.data,inputType).then(function (metadata) {
-                // to see metadata uncomment next line
-                // console.log(JSON.stringify(metadata, " ", 2));
-
-                var transcription = metadataToString(metadata);
-                console.log("Transcription: " + transcription);
-
-                //send response
                 res.send({
                     status: true,
                     message: 'File transcribed.',
-                    transcript: transcription,
+                    transcript: metadataToString(result),
                     result: 'success'
                 });
 
-                //delete temp files
-                deleteFile(scorerpath);
-            }).catch(function (error) {
-                console.log(error.message);
-               //send response
-               res.send({
-                   status: true,
-                   message: 'transcription failed miserably',
-                   result: 'error'
-               });
-            });
+                deleteFile("uploads/" + tmpname + "_scorer");
+                deleteFile("uploads/" + tmpname + "_blob");
+                deleteFile("uploads/converted_" + tmpname + "_blob");
 
-        }
+            })
+            .on('error', function(err) {
+                console.log('an error happened: ' + err.message);
+            })
+            // save to file
+            .save("uploads/converted_" + tmpname + "_blob");
+
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+});
+
+/*************************************************
+ Lang tool proxy
+ exects a lang tool server at local host on port 8081
+TT uses this
+ **************************************************/
+
+app.post('/lt',(req,res)=>{
+    try {
+        var proxy = require('request');
+        proxy.post({
+            url:     'http://localhost:8081/v2/check',
+            form:    { text: req.body.text, language: req.body.language }
+        }, function(error, response, body){
+            if (error) {
+                console.log('error posting  data', error);
+            }else{
+                res.setHeader("Content-Type", "application/json");
+                res.send(body);
+            }
+        });
+
     } catch (err) {
         console.log("ERROR");
         console.log(err);
@@ -957,6 +1021,8 @@ app.post('/lm', (req, res) => {
     }//end of if pathtoscorer  exists
 
 });//end of app.get
+
+
 
 /*************************************************
     Start Webserver and run the file
