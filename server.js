@@ -172,6 +172,8 @@ app.post('/stt', (req, res) => {
         var model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
         var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
         var result = model.sttWithMetadata(audioBuffer);
+        
+        console.log("Transcript: "+metadataToString(result));
 
         res.send({
           status: true,
