@@ -631,9 +631,11 @@ app.get('/scorerbuilder', (req, res) => {
                         }
                     });//end of res send
 
-                    // script is done, scorer is built, mv scorer and txt
-                    moveFile(tmp_scorerpath, pathtoscorer);
-                    moveFile(tmp_textpath, pathtotext);
+                    // script is done, scorer is built, mv scorer and txt works across devices (ala efs)
+                    mv(tmp_scorerpath, pathtoscorer);
+                    mv(tmp_textpath, pathtotext);
+                    //moveFile(tmp_scorerpath, pathtoscorer);
+                    //moveFile(tmp_textpath, pathtotext);
                 }
             });
 
@@ -1001,9 +1003,11 @@ app.post('/lm', (req, res) => {
                         scorer: base64data
                     });//end of res send
 
-                    // script is done, scorer is built, mv scorer and txt
-                    moveFile(tmp_scorerpath, pathtoscorer);
-                    moveFile(tmp_textpath, pathtotext);
+                    // script is done, scorer is built, mv scorer and txt works across devices (ala efs)
+                    mv(tmp_scorerpath, pathtoscorer);
+                    mv(tmp_textpath, pathtotext);
+                    //moveFile(tmp_scorerpath, pathtoscorer);
+                    //moveFile(tmp_textpath, pathtotext);
                 }
             });
 
