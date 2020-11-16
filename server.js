@@ -552,10 +552,17 @@ const execFile = require('child_process').execFile;
 const path2buildDir = "/home/scorerbuilder/"
 
 function moveFile(fromPath, toPath) {
+    fs.copyFile(oldpath, newpath, function (err) {
+        if (err) throw err;
+        fs.unlinkSync(oldpath);
+    });
+    /*
+    / did not work across partitions eg EFS
     fs.rename(fromPath, toPath, (err) => {
       if (err) throw err;
       console.log('Move complete ' + toPath);
     });
+    */
 }
 
 function deleteFile(path) {
@@ -631,11 +638,9 @@ app.get('/scorerbuilder', (req, res) => {
                         }
                     });//end of res send
 
-                    // script is done, scorer is built, mv scorer and txt works across devices (ala efs)
-                    mv(tmp_scorerpath, pathtoscorer);
-                    mv(tmp_textpath, pathtotext);
-                    //moveFile(tmp_scorerpath, pathtoscorer);
-                    //moveFile(tmp_textpath, pathtotext);
+                    // script is done, scorer is built, move scorer and txt must work across devices (ala efs)
+                    moveFile(tmp_scorerpath, pathtoscorer);
+                    moveFile(tmp_textpath, pathtotext);
                 }
             });
 
@@ -1003,11 +1008,10 @@ app.post('/lm', (req, res) => {
                         scorer: base64data
                     });//end of res send
 
-                    // script is done, scorer is built, mv scorer and txt works across devices (ala efs)
-                    mv(tmp_scorerpath, pathtoscorer);
-                    mv(tmp_textpath, pathtotext);
-                    //moveFile(tmp_scorerpath, pathtoscorer);
-                    //moveFile(tmp_textpath, pathtotext);
+                    // script is done, scorer is built, move scorer and txt must work across devices (ala efs)
+
+                    moveFile(tmp_scorerpath, pathtoscorer);
+                    moveFile(tmp_textpath, pathtotext);
                 }
             });
 
