@@ -144,6 +144,7 @@ function bufferToStream(buffer) {
 
 function convertAndTranscribe(audiofile, scorerfile){
     var convfile = audiofile + '_conv';
+    console.log('audiofile',audiofile);
 
     var proc = ffmpeg(audiofile)
         .format('wav')
@@ -279,7 +280,7 @@ app.post('/transcribe', async(req, res) => {
              }
 
 
-            convertAndTranscribe(usescorer, './uploads/' + tmpname).then(function (metadata) {
+            convertAndTranscribe('./uploads/' + tmpname,usescorer).then(function (metadata) {
 
                 var transcription = metadataToString(metadata);
                 console.log("Transcription: " + transcription);
