@@ -15,6 +15,7 @@ const url = require('url');
 const fileUpload = require("express-fileupload");
 const ffmpeg = require("fluent-ffmpeg");
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
+const SpellChecker = require('node-aspell');
 
 const STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
 const STD_SCORER = "./deepspeech-0.7.3-models.scorer"
@@ -53,7 +54,6 @@ app.use(morgan('dev'));
  Called from SQS->lambda->here OR browser
 
  **************************************************/
-const SpellChecker = require('node-aspell');
 
 app.post('/spellcheck', (req, res) => {
   try {
@@ -72,25 +72,25 @@ app.post('/spellcheck', (req, res) => {
       let vocab = req.body.vocab;
 
       const checker = new SpellChecker.Spellchecker(lang);
-      let words = passage.split(' ');
-      let returndata = {};
-      returndata.results = [];
-      for (var i = 0; i < words.length; i++) {
-        returndata.results[i] = !checker.isMisspelled(words[i]);
-      }
+      let words = passage.replace(/\n+/g,'').split(/(?!')[[:punct:]]| /).map(function(e){return e.replace(/[^a-zA-Z0-9]/g,'');}).filter(function(e){return e.trim()!=="";});
+      let returndata = {"correct":[],"incorrect":[]};
+      var list;
+      words.forEach(function(word){
+        list = checker.isMisspelled(word)?"incorrect":"correct";
+        returndata[list].push(word);
+      });
       console.log(JSON.stringify(returndata));
       //checker.isMisspelledAsync(word, callback)
       //send response
       return res.send({
         result: "success",
-        message: 'Spell check complete.',
         data: returndata
       });
     }
   } catch (err) {
     console.log("ERROR");
     console.log(err);
-    res.status(500).send();
+    return res.status(500).send();
   }
 });
 
