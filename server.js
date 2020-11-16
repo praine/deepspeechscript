@@ -552,9 +552,9 @@ const execFile = require('child_process').execFile;
 const path2buildDir = "/home/scorerbuilder/"
 
 function moveFile(fromPath, toPath) {
-    fs.copyFile(oldpath, newpath, function (err) {
+    fs.copyFile(fromPath, toPath, function (err) {
         if (err) throw err;
-        fs.unlinkSync(oldpath);
+        fs.unlinkSync(fromPath);
     });
     /*
     / did not work across partitions eg EFS
