@@ -640,6 +640,7 @@ app.get('/scorerbuilder', (req, res) => {
                     });//end of res send
 
                     // script is done, scorer is built, move scorer and txt must work across devices (ala efs)
+                    console.log('path to scorer:', pathtoscorer);
                     moveFile(tmp_scorerpath, pathtoscorer);
                     moveFile(tmp_textpath, pathtotext);
                 }
