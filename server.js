@@ -32,6 +32,11 @@ let STD_SCORER = "./deepspeech-0.7.3-models.scorer"
 let STD_SAMPLE_RATE = 16000; // std for deepspeech
 
 /*************************************************
+ Scorers folder
+ **************************************************/
+let SCORERS_FOLDER = "/mnt/efs/scorers/";
+
+/*************************************************
     Returns a model for given model and scorer path
  **************************************************/
 function createModel(modelPath, scorerPath) {
@@ -159,7 +164,6 @@ function convertAndTranscribe(audiofile, scorerfile){
 
                 console.log("Transcript: "+metadataToString(result));
 
-                deleteFile(scorerfile);
                 deleteFile(audiofile);
                 deleteFile(convfile);
 
@@ -268,7 +272,7 @@ app.post('/transcribe', async(req, res) => {
             // we will load diff lang models (Eng. vocab sets) depending on the vocab param
             var usescorer = STD_SCORER;
             if(scorer && scorer!=='none'){
-              usescorer = './scorers/id-' + scorer + '.scorer';
+              usescorer = SCORERS_FOLDER + 'id-' + scorer + '.scorer';
               if (!fs.existsSync(usescorer)) {
                   usescorer = STD_SCORER;
               }
@@ -345,7 +349,7 @@ app.post('/s3transcribeReturn', (req, res) => {
                         // we will load diff lang models (Eng. vocab sets) depending on the vocab param
                         var usescorer = STD_SCORER;
                         if (vocab && vocab !== 'none') {
-                            usescorer = './scorers/id-' + vocab + '.scorer';
+                            usescorer = SCORERS_FOLDER +'id-' + vocab + '.scorer';
                             if (!fs.existsSync(usescorer)) {
                                 usescorer = STD_SCORER;
                             }
@@ -464,7 +468,7 @@ app.post('/s3transcribe', async(req, res) => {
                               // we will load diff lang models (Eng. vocab sets) depending on the vocab param
                               var usescorer = STD_SCORER;
                               if(vocab && vocab!=='none'){
-                                 usescorer = './scorers/id-' + vocab + '.scorer';
+                                 usescorer = SCORERS_FOLDER + 'id-' + vocab + '.scorer';
                                  if (!fs.existsSync(usescorer)) {
                                    usescorer = STD_SCORER;
                                  }
@@ -578,8 +582,8 @@ app.get('/scorerbuilder', (req, res) => {
     const hash = crypto.createHash('sha1');
     hash.update(sentence);
     var uid = 'id-' + hash.digest('hex');
-    var pathtoscorer = "./scorers/" + uid + ".scorer";
-    var pathtotext = "./scorers/" + uid + ".txt";
+    var pathtoscorer = SCORERS_FOLDER + uid + ".scorer";
+    var pathtotext = SCORERS_FOLDER + uid + ".txt";
 
     //If model exists, terrific
     if (fs.existsSync(pathtoscorer)) {
@@ -932,8 +936,8 @@ app.post('/lm', (req, res) => {
     const hash = crypto.createHash('sha1');
     hash.update(text);
     var uid = 'id-' + hash.digest('hex');
-    var pathtoscorer = "./scorers/" + uid + ".scorer";
-    var pathtotext = "./scorers/" + uid + ".txt";
+    var pathtoscorer = SCORERS_FOLDER + uid + ".scorer";
+    var pathtotext = SCORERS_FOLDER + uid + ".txt";
     if (fs.existsSync(pathtoscorer)) {
         console.log("** Scorer already existed **");
         fs.readFile(pathtoscorer, function(err,data)
