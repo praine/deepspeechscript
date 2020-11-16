@@ -133,7 +133,7 @@ function bufferToStream(buffer) {
     Use FFMPEG to convert any audio input to
     mono 16bit PCM 16Khz
     then run DeepSpeech in a stream
- 
+
     change sttWithMetadata() to stt() if needed
  **************************************************/
 
@@ -276,8 +276,6 @@ app.post('/transcribe', async(req, res) => {
 
 
             convertAndTranscribe(usescorer, './uploads/' + tmpname).then(function (metadata) {
-                // to see metadata uncomment next line
-                // console.log(JSON.stringify(metadata, " ", 2));
 
                 var transcription = metadataToString(metadata);
                 console.log("Transcription: " + transcription);
@@ -360,7 +358,6 @@ app.post('/s3transcribeReturn', (req, res) => {
 
                         convertAndTranscribe("uploads/" + tmpname, usescorer)
                             .then(function (metadata) {
-                                // console.log(JSON.stringify(metadata, " ", 2));
                                 var transcription = metadataToString(metadata);
                                 var stringmetadata = metadataToAWSFormat(metadata, transcription);
 
@@ -439,16 +436,9 @@ app.post('/s3transcribe', async(req, res) => {
                
                 } else {
                         console.log("*** start transcribe ***");
-                       /* 
-                        res.send({
-                           status: true,
-                           message: req.body.audioFileUrl
-                        });
-*/
-                       
 
                         //Use the name of the input field (i.e. "audioFile") to retrieve the uploaded file
-            // you may have to change it 
+                        // you may have to change it
                         let transcriptUrl = decodeURIComponent(req.body.transcriptUrl);
                         let metadataUrl = decodeURIComponent(req.body.metadataUrl);
                         let audioFileUrl = req.body.audioFileUrl;
@@ -509,8 +499,6 @@ app.post('/s3transcribe', async(req, res) => {
                                if(err){
                                  console.log('error posting transcript',err);
                                }
-                               //console.log('res',res);
-                              // console.log('body',body);
                              });
 
                              var putMetadataOpts={ url: metadataUrl, 
@@ -523,8 +511,6 @@ app.post('/s3transcribe', async(req, res) => {
                                if(err){
                                  console.log('error posting metadata transcript',err);
                                }
-                               //console.log('res',res);
-                              // console.log('body',body);
                              });
 
 
@@ -611,7 +597,7 @@ app.get('/scorerbuilder', (req, res) => {
         let tmpname = Math.random().toString(20).substr(2, 6);
         let tmp_textpath = path2buildDir + 'work/' + tmpname + '.txt';
         let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
-        write2File(tmp_textpath, text + "\n");
+        write2File(tmp_textpath, sentence + "\n");
 
         // run script that builds model, callback after that is done and we moved scorer
         const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
@@ -862,7 +848,7 @@ app.post('/stt', (req, res) => {
             .audioCodec('pcm_s16le')
             .audioBitrate(16)
             .audioChannels(1)
-            .withAudioFrequency(16000)
+            .withAudioFrequency(STD_SAMPLE_RATE)
             // setup event handlers
             .on('end', function() {
 
