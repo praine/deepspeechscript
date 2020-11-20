@@ -17,6 +17,10 @@ const ffmpeg = require("fluent-ffmpeg");
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 const SpellChecker = require('node-aspell');
 
+const nodefetch = require('node-fetch');
+const tiuser = "paul.raine@gmail.com";
+const tipw = "2T+3L%$GH7.h837/T3+]28f)Ao$=4";
+
 const STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
 const STD_SCORER = "./deepspeech-0.7.3-models.scorer"
 const STD_SAMPLE_RATE = 16000;
@@ -55,6 +59,84 @@ app.use(morgan('dev'));
 
  **************************************************/
 
+app.post('/textinspector', (req, res) => {
+
+  if (!req.body.passage) {
+
+    return res.send({
+      result: "error",
+      message: 'textinspector: No passage included'
+    });
+
+  } else {
+
+    try {
+
+      nodefetch('https://' + encodeURIComponent(tiuser) + ':' + encodeURIComponent(tipw) + '@textinspector.com/api/v1/createsession', {
+        headers: {
+          'accept': 'application/json'
+        }
+      }).then(function(res) {
+        return res.json();
+      }).then(function(json) {
+
+        var sessionid = json.sessionid;
+
+        console.log("Got session: " + sessionid);
+
+        var text = req.body.passage;
+
+        nodefetch('https://textinspector.com/api/v1/newanalysis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+            'Cookie': 'textinspector.session=' + sessionid
+          },
+          body: JSON.stringify({
+            "text": encodeURIComponent(text),
+            "delimiter": "",
+            "split": "",
+            "textmode": "Writing"
+          })
+        }).then(function(res) {
+          return res.json();
+        }).then(function(json) {
+
+          var ctxId = json.response.ctxId;
+          console.log("Got context: " + ctxId);
+
+
+          nodefetch('https://textinspector.com/api/v1/' + ctxId + '/doc1/tiprofile', {
+            headers: {
+              'accept': 'application/json',
+              'Cookie': 'textinspector.session=' + sessionid
+            }
+          }).then(function(res) {
+            return res.json();
+          }).then(function(json) {
+
+            return res.send({
+              result: "success",
+              data: json
+            });
+
+          });
+
+        });
+
+      });
+
+    } catch (err) {
+      console.log("ERROR");
+      console.log(err);
+      return res.status(500).send();
+    }
+
+  }
+
+})
+
 app.post('/spellcheck', (req, res) => {
   try {
     if (!req.body.passage) {
@@ -72,11 +154,18 @@ app.post('/spellcheck', (req, res) => {
       let vocab = req.body.vocab;
 
       const checker = new SpellChecker.Spellchecker(lang);
-      let words = passage.replace(/\n+/g,'').split(/(?!')[[:punct:]]| /).map(function(e){return e.replace(/[^a-zA-Z0-9]/g,'');}).filter(function(e){return e.trim()!=="";});
-      let returndata = {"correct":[],"incorrect":[]};
+      let words = passage.replace(/\n+/g, '').split(/(?!')[[:punct:]]| /).map(function(e) {
+        return e.replace(/[^a-zA-Z0-9]/g, '');
+      }).filter(function(e) {
+        return e.trim() !== "";
+      });
+      let returndata = {
+        "correct": [],
+        "incorrect": []
+      };
       var list;
-      words.forEach(function(word){
-        list = checker.isMisspelled(word)?"incorrect":"correct";
+      words.forEach(function(word) {
+        list = checker.isMisspelled(word) ? "incorrect" : "correct";
         returndata[list].push(word);
       });
       console.log(JSON.stringify(returndata));
