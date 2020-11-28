@@ -112,6 +112,8 @@ function defToText(def) {
 }
 
 app.post("/text_to_test", (req, res) => {
+  
+  console.log(JSON.stringify(req.body));
 
   try {
 
@@ -387,15 +389,6 @@ app.post('/stt', (req, res) => {
       });
     }
 
-    /*
-    if (!req.body.scorer) {
-      return res.send({
-        result: "error",
-        message: 'No scorer uploaded'
-      });
-    }
-    */
-
     var tmpname = Math.random().toString(20).substr(2, 6);
     if (req.body.scorer) {
       var b64scorer = req.body.scorer;
@@ -427,7 +420,7 @@ app.post('/stt', (req, res) => {
         var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
         var result = model.sttWithMetadata(audioBuffer, maxAlternates);
 
-        /*console.log("Result: "+JSON.stringify(result));*/
+        console.log("Result: "+JSON.stringify(result));
 
         for (var i = 0; i < maxAlternates; i++) {
           console.log("Transcript: " + metadataToString(result, i));
