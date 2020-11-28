@@ -185,7 +185,9 @@ app.post("/text_to_test", (req, res) => {
 
     var re;
     output.words = this_dict_phrases.filter(function(e) {
-      return req.body.passage.includes(e);
+      re=new RegExp("\\b"+e+"\\b");
+      return re.test(req.body.passge);
+      //return req.body.passage.includes(e);
     })
     req.body.passage.split(/[[:punct:]]| /).forEach(function(e) {
       if (this_dict_words.includes(e) && !output.words.includes(e)) {
