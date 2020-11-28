@@ -17,6 +17,38 @@ const ffmpeg = require("fluent-ffmpeg");
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 const SpellChecker = require('node-aspell');
 
+const en_dict = JSON.parse(fs.readFileSync("dictionaries/en-many.json"));
+const en_dict_words = Object.keys(en_dict).filter(function(e) {
+  return !/ /.test(e);
+});
+const en_dict_phrases = Object.keys(en_dict).filter(function(e) {
+  return / /.test(e);
+});
+
+const fr_dict = JSON.parse(fs.readFileSync("dictionaries/fr-en.json"));
+const fr_dict_words = Object.keys(fr_dict).filter(function(e) {
+  return !/ /.test(e);
+});
+const fr_dict_phrases = Object.keys(fr_dict).filter(function(e) {
+  return / /.test(e);
+});
+
+const es_dict = JSON.parse(fs.readFileSync("dictionaries/es-en.json"));
+const es_dict_words = Object.keys(es_dict).filter(function(e) {
+  return !/ /.test(e);
+});
+const es_dict_phrases = Object.keys(es_dict).filter(function(e) {
+  return / /.test(e);
+});
+
+const de_dict = JSON.parse(fs.readFileSync("dictionaries/de-en.json"));
+const de_dict_words = Object.keys(de_dict).filter(function(e) {
+  return !/ /.test(e);
+});
+const de_dict_phrases = Object.keys(de_dict).filter(function(e) {
+  return / /.test(e);
+});
+
 const nodefetch = require('node-fetch');
 const tiuser = "paul.raine@gmail.com";
 const tipw = "2T+3L%$GH7.h837/T3+]28f)Ao$=4";
@@ -25,7 +57,9 @@ const STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
 const STD_SCORER = "./deepspeech-0.7.3-models.scorer"
 const STD_SAMPLE_RATE = 16000;
 const execFile = require('child_process').execFile;
-const path2buildDir = "/home/scorerbuilder/"
+const path2buildDir = "/home/scorerbuilder/";
+
+const tokenizer = require('sbd');
 
 function createModel(modelPath, scorerPath) {
   let model = new DeepSpeech.Model(modelPath);
@@ -33,8 +67,8 @@ function createModel(modelPath, scorerPath) {
   return model;
 }
 
-function metadataToString(all_metadata) {
-  var transcript = all_metadata.transcripts[0];
+function metadataToString(all_metadata, idx) {
+  var transcript = all_metadata.transcripts[idx];
   var retval = ""
   for (var i = 0; i < transcript.tokens.length; ++i) {
     retval += transcript.tokens[i].text;
@@ -58,6 +92,121 @@ app.use(morgan('dev'));
  Called from SQS->lambda->here OR browser
 
  **************************************************/
+
+function defToText(def) {
+  var text = "";
+  for (var pos in def) {
+    if (typeof def[pos] === 'string') {
+      text += pos + " " + def[pos] + "\n";
+    } else {
+      text += pos + " " + def[pos].join(", ") + "\n";
+    }
+  }
+  return text;
+}
+
+app.post("/text_to_test", (req, res) => {
+
+  try {
+
+    if (!req.body.passage) {
+
+      return res.send({
+        result: "error",
+        message: 'text_to_test: No passage included'
+      });
+
+    }
+
+    if (!req.body.language) {
+
+      return res.send({
+        result: "error",
+        message: 'text_to_test: Language not set'
+      });
+
+    }
+
+    if (!req.body.text_language) {
+
+      return res.send({
+        result: "error",
+        message: 'text_to_test: Text language not set'
+      });
+
+    }
+
+    var output = {
+      "words": [],
+      "definitions": [],
+      "sentences": []
+    };
+
+    output.sentences = tokenizer.sentences(req.body.passage, {}).map(function(sentence) {
+      return {
+        "sentence": sentence,
+        "active": false,
+        "activity": "scramble",
+        "selected": "",
+      };
+    });
+
+    var this_dict, this_dict_words, this_dict_phrases;
+    switch (req.body.text_language) {
+      case 'eng':
+        this_dict = en_dict;
+        this_dict_words = en_dict_words;
+        this_dict_phrases = en_dict_phrases;
+        break;
+      case 'fra':
+        this_dict = fr_dict;
+        this_dict_words = fr_dict_words;
+        this_dict_phrases = fr_dict_phrases;
+        break;
+      case 'spa':
+        this_dict = es_dict;
+        this_dict_words = es_dict_words;
+        this_dict_phrases = es_dict_phrases;
+        break;
+      case 'deu':
+        this_dict = de_dict;
+        this_dict_words = de_dict_words;
+        this_dict_phrases = de_dict_phrases;
+        break;
+    }
+
+    var re;
+    output.words = this_dict_phrases.filter(function(e) {
+      return req.body.passage.includes(e);
+    })
+    req.body.passage.split(/[[:punct:]]| /).forEach(function(e) {
+      if (this_dict_words.includes(e) && !output.words.includes(e)) {
+        output.words.push(e);
+      }
+    })
+
+    output.words.forEach(function(e) {
+      output.definitions.push({
+        "word": e,
+        "definition": this_dict[e][req.body.language],
+        "text_definition": this_dict[e][req.body.language] ? defToText(this_dict[e][req.body.language]) : this_dict[e][req.body.language],
+        "selected": "",
+        "active": false,
+      })
+    })
+
+    return res.send({
+      result: "success",
+      output: output,
+    });
+
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send();
+  }
+
+});
 
 app.post('/textinspector', (req, res) => {
 
@@ -95,9 +244,7 @@ app.post('/textinspector', (req, res) => {
           },
           body: JSON.stringify({
             "text": encodeURIComponent(text),
-            "delimiter": "",
-            "split": "",
-            "textmode": "Writing"
+            "textmode": "Reading"
           })
         }).then(function(res) {
           return res.json();
@@ -234,17 +381,21 @@ app.post('/stt', (req, res) => {
       });
     }
 
+    /*
     if (!req.body.scorer) {
       return res.send({
         result: "error",
         message: 'No scorer uploaded'
       });
     }
+    */
 
     var tmpname = Math.random().toString(20).substr(2, 6);
-    var b64scorer = req.body.scorer;
-    var buf = Buffer.from(b64scorer, 'base64');
-    fs.writeFileSync("uploads/" + tmpname + "_scorer", buf);
+    if (req.body.scorer) {
+      var b64scorer = req.body.scorer;
+      var buf = Buffer.from(b64scorer, 'base64');
+      fs.writeFileSync("uploads/" + tmpname + "_scorer", buf);
+    }
     fs.writeFileSync("uploads/" + tmpname + "_blob", req.files.blob.data);
 
     var proc = ffmpeg("uploads/" + tmpname + "_blob")
@@ -255,20 +406,37 @@ app.post('/stt', (req, res) => {
       .withAudioFrequency(16000)
       .on('end', function() {
 
-        var model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
+        var model;
+
+        if (req.body.scorer) {
+          model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
+        } else {
+          model = createModel(STD_MODEL, STD_SCORER);
+        }
+
+        var beamWidth = 2000 // 500 default
+        model.setBeamWidth(beamWidth);
+
+        var maxAlternates = 10;
         var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
-        var result = model.sttWithMetadata(audioBuffer);
+        var result = model.sttWithMetadata(audioBuffer, maxAlternates);
 
-        console.log("Transcript: " + metadataToString(result));
+        /*console.log("Result: "+JSON.stringify(result));*/
 
-        deleteFile("uploads/" + tmpname + "_scorer");
+        for (var i = 0; i < maxAlternates; i++) {
+          console.log("Transcript: " + metadataToString(result, i));
+        }
+
+        if (req.body.scorer) {
+          deleteFile("uploads/" + tmpname + "_scorer");
+        }
         deleteFile("uploads/" + tmpname + "_blob");
         deleteFile("uploads/converted_" + tmpname + "_blob");
 
         return res.send({
           result: "success",
           message: 'File transcribed.',
-          transcript: metadataToString(result),
+          transcript: metadataToString(result, 0),
         });
 
       })
