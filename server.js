@@ -17,7 +17,10 @@ const ffmpeg = require("fluent-ffmpeg");
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 const SpellChecker = require('node-aspell');
 
-const en_dict = JSON.parse(fs.readFileSync("dictionaries/en-many.json"));
+const zipper = require('zip-local');
+
+const en_dict_unzipped = zipper.sync.unzip("dictionaries/en-many.zip").memory();
+const en_dict = JSON.parse(en_dict_unzipped.read("en-many.json", 'text'));
 const en_dict_words = Object.keys(en_dict).filter(function(e) {
   return !/ /.test(e);
 });
@@ -25,7 +28,8 @@ const en_dict_phrases = Object.keys(en_dict).filter(function(e) {
   return / /.test(e);
 });
 
-const fr_dict = JSON.parse(fs.readFileSync("dictionaries/fr-en.json"));
+const fr_dict_unzipped = zipper.sync.unzip("dictionaries/fr-en.zip").memory();
+const fr_dict = JSON.parse(fr_dict_unzipped.read("fr-en.json", 'text'));
 const fr_dict_words = Object.keys(fr_dict).filter(function(e) {
   return !/ /.test(e);
 });
@@ -33,7 +37,8 @@ const fr_dict_phrases = Object.keys(fr_dict).filter(function(e) {
   return / /.test(e);
 });
 
-const es_dict = JSON.parse(fs.readFileSync("dictionaries/es-en.json"));
+const es_dict_unzipped = zipper.sync.unzip("dictionaries/es-en.zip").memory();
+const es_dict = JSON.parse(es_dict_unzipped.read("es-en.json", 'text'));
 const es_dict_words = Object.keys(es_dict).filter(function(e) {
   return !/ /.test(e);
 });
@@ -41,7 +46,8 @@ const es_dict_phrases = Object.keys(es_dict).filter(function(e) {
   return / /.test(e);
 });
 
-const de_dict = JSON.parse(fs.readFileSync("dictionaries/de-en.json"));
+const de_dict_unzipped = zipper.sync.unzip("dictionaries/de-en.zip").memory();
+const de_dict = JSON.parse(de_dict_unzipped.read("de-en.json", 'text'));
 const de_dict_words = Object.keys(de_dict).filter(function(e) {
   return !/ /.test(e);
 });
