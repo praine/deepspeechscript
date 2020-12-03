@@ -101,6 +101,7 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 app.use(morgan('dev'));
+app.use(express.static('public'));
 
 function defToText(def) {
   var text = "";
