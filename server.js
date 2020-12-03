@@ -114,9 +114,15 @@ function defToText(def) {
   return text;
 }
 
+app.get('loaderio-29186d2b11ef511581c9d669a9257c57/',(req,res)=>{
+  
+  return res.send("loaderio-29186d2b11ef511581c9d669a9257c57");
+  
+});
+
 app.get("/", (req, res) => {
 
-  res.status(200).send();
+  return res.status(200).send();
 
 });
 
