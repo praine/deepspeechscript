@@ -114,6 +114,152 @@ function defToText(def) {
   return text;
 }
 
+app.get("/", (req, res) => {
+
+  res.status(200).send();
+
+});
+
+app.post('/lm', (req, res) => {
+
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  if (!req.body.text) {
+    return res.send({
+      result: "error",
+      message: 'No text specified'
+    });
+  }
+
+  if (!req.body.origin) {
+    return res.send({
+      result: "error",
+      message: 'No origin specified'
+    });
+  }
+
+  writeLog("/lm: endpoint triggered", ip, req.body.origin);
+
+  let tmpname = Math.random().toString(20).substr(2, 6);
+  let tmp_textpath = path2buildDir + 'work/' + tmpname + '.txt';
+  let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
+  fs.appendFileSync(tmp_textpath, req.body.text + "\n");
+
+  const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
+
+    console.log(stdout);
+
+    if (error) {
+      writeLog("/lm: error generating scorer", ip, req.body.origin);
+      return res.send({
+        result: "error",
+        message: 'Unable to generate scorer'
+      });
+    }
+
+    var data = fs.readFileSync(tmp_scorerpath);
+    writeLog("/lm: scorer generated", ip, req.body.origin);
+
+    deleteFile(tmp_scorerpath);
+    deleteFile(tmp_textpath);
+
+    return res.send({
+      result: "success",
+      scorer: Buffer.from(data).toString('base64')
+    });
+
+  });
+
+});
+
+app.post('/stt', (req, res) => {
+
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  try {
+
+    if (!req.files) {
+      return res.send({
+        result: "error",
+        message: 'No blob specified'
+      });
+    }
+
+    if (!req.body.origin) {
+      return res.send({
+        result: "error",
+        message: 'No origin specified'
+      });
+    }
+
+    writeLog("/stt: endpoint triggered", ip, req.body.origin);
+
+    var tmpname = Math.random().toString(20).substr(2, 6);
+
+    if (req.body.scorer) {
+      var b64scorer = req.body.scorer;
+      var buf = Buffer.from(b64scorer, 'base64');
+      fs.writeFileSync("uploads/" + tmpname + "_scorer", buf);
+    }
+
+    fs.writeFileSync("uploads/" + tmpname + "_blob", req.files.blob.data);
+
+    var proc = ffmpeg("uploads/" + tmpname + "_blob")
+      .format('wav')
+      .audioCodec('pcm_s16le')
+      .audioBitrate(16)
+      .audioChannels(1)
+      .withAudioFrequency(16000)
+      .on('end', function() {
+
+        var model;
+
+        if (req.body.scorer) {
+          model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
+        } else {
+          model = createModel(STD_MODEL, STD_SCORER);
+        }
+
+        var beamWidth = 2000 // 500 default
+        model.setBeamWidth(beamWidth);
+
+        var maxAlternates = 1;
+        var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
+
+        var result = model.sttWithMetadata(audioBuffer, maxAlternates);
+
+        if (req.body.scorer) {
+          deleteFile("uploads/" + tmpname + "_scorer");
+        }
+
+        deleteFile("uploads/" + tmpname + "_blob");
+        deleteFile("uploads/converted_" + tmpname + "_blob");
+
+        var transcript = metadataToString(result, 0);
+
+        writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
+
+        return res.send({
+          result: "success",
+          message: 'File transcribed.',
+          transcript: transcript,
+        });
+
+      })
+      .on('error', function(err) {
+        writeLog("/stt: error (" + err.message + ")", ip, req.body.origin);
+      })
+      // save to file
+      .save("uploads/converted_" + tmpname + "_blob");
+
+
+  } catch (err) {
+    writeLog("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
+
+  }
+
+});
+
 app.post("/similar_words", (req, res) => {
 
   if (!req.body.language) {
@@ -167,7 +313,7 @@ app.post("/similar_words", (req, res) => {
 
 app.post("/text_to_test", (req, res) => {
 
-  console.log(JSON.stringify(req.body));
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   try {
 
@@ -197,6 +343,8 @@ app.post("/text_to_test", (req, res) => {
       });
 
     }
+
+    writeLog("/text_to_test: endpoint triggered", ip, "lstokyo");
 
     var output = {
       "words": [],
@@ -265,13 +413,18 @@ app.post("/text_to_test", (req, res) => {
 
 
   } catch (err) {
-    console.log(err);
-    return res.status(500).send();
+    writeLog("/text_to_test: error generating test data", ip, "lstokyo");
+    return res.send({
+      result: "error",
+      message: "Could not generate test data",
+    });
   }
 
 });
 
 app.post('/textinspector', (req, res) => {
+
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   if (!req.body.passage) {
 
@@ -280,130 +433,163 @@ app.post('/textinspector', (req, res) => {
       message: 'textinspector: No passage included'
     });
 
-  } else {
+  }
 
-    try {
+  writeLog("/textinspector: endpoint triggered", ip, "lstokyo");
 
-      nodefetch('https://' + encodeURIComponent(tiuser) + ':' + encodeURIComponent(tipw) + '@textinspector.com/api/v1/createsession', {
+  try {
+
+    nodefetch('https://' + encodeURIComponent(tiuser) + ':' + encodeURIComponent(tipw) + '@textinspector.com/api/v1/createsession', {
+      headers: {
+        'accept': 'application/json'
+      }
+    }).then(function(res) {
+      return res.json();
+    }).then(function(json) {
+
+      var sessionid = json.sessionid;
+
+      console.log("Got session: " + sessionid);
+
+      var text = req.body.passage;
+
+      nodefetch('https://textinspector.com/api/v1/newanalysis', {
+        method: 'POST',
         headers: {
-          'accept': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+          'Cookie': 'textinspector.session=' + sessionid
+        },
+        body: JSON.stringify({
+          "text": encodeURIComponent(text),
+          "textmode": "Reading"
+        })
       }).then(function(res) {
         return res.json();
       }).then(function(json) {
 
-        var sessionid = json.sessionid;
+        var ctxId = json.response.ctxId;
+        console.log("Got context: " + ctxId);
 
-        console.log("Got session: " + sessionid);
 
-        var text = req.body.passage;
-
-        nodefetch('https://textinspector.com/api/v1/newanalysis', {
-          method: 'POST',
+        nodefetch('https://textinspector.com/api/v1/' + ctxId + '/doc1/tiprofile', {
           headers: {
-            'Content-Type': 'application/json',
             'accept': 'application/json',
             'Cookie': 'textinspector.session=' + sessionid
-          },
-          body: JSON.stringify({
-            "text": encodeURIComponent(text),
-            "textmode": "Reading"
-          })
+          }
         }).then(function(res) {
           return res.json();
         }).then(function(json) {
 
-          var ctxId = json.response.ctxId;
-          console.log("Got context: " + ctxId);
-
-
-          nodefetch('https://textinspector.com/api/v1/' + ctxId + '/doc1/tiprofile', {
-            headers: {
-              'accept': 'application/json',
-              'Cookie': 'textinspector.session=' + sessionid
-            }
-          }).then(function(res) {
-            return res.json();
-          }).then(function(json) {
-
-            return res.send({
-              result: "success",
-              data: json
-            });
-
+          return res.send({
+            result: "success",
+            data: json
           });
 
         });
 
       });
 
-    } catch (err) {
-      console.log("ERROR");
-      console.log(err);
-      return res.status(500).send();
-    }
+    });
 
+  } catch (err) {
+    return res.send({
+      result: "error",
+      message: "Could not execute text inspector",
+    });
   }
 
-})
+
+});
 
 app.post('/spellcheck', (req, res) => {
+
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
   try {
+    
     if (!req.body.passage) {
 
       return res.send({
         result: "error",
-        message: 'spellcheck: No passage included'
+        message: 'spellcheck: No passage specified'
       });
 
-    } else {
-      console.log("*** start spellcheck ***");
-
-      let lang = req.body.lang; //eg "en_US"
-      let passage = req.body.passage;
-      let vocab = req.body.vocab;
-
-      const checker = new SpellChecker.Spellchecker(lang);
-      let words = passage.replace(/\n+/g, '').split(/(?!')[[:punct:]]| /).map(function(e) {
-        return e.replace(/[^a-zA-Z0-9]/g, '');
-      }).filter(function(e) {
-        return e.trim() !== "";
-      });
-      let returndata = {
-        "correct": [],
-        "incorrect": []
-      };
-      var list;
-      words.forEach(function(word) {
-        list = checker.isMisspelled(word) ? "incorrect" : "correct";
-        returndata[list].push(word);
-      });
-      console.log(JSON.stringify(returndata));
-      //checker.isMisspelledAsync(word, callback)
-      //send response
-      return res.send({
-        result: "success",
-        data: returndata
-      });
     }
+    
+    if (!req.body.lang) {
+
+      return res.send({
+        result: "error",
+        message: 'spellcheck: No language specified'
+      });
+
+    }
+    
+    writeLog("/spellcheck: endpoint triggered", ip, "lstokyo");
+
+    let lang = req.body.lang; //eg "en_US"
+    let passage = req.body.passage;
+    let vocab = req.body.vocab;
+
+    const checker = new SpellChecker.Spellchecker(lang);
+    let words = passage.replace(/\n+/g, '').split(/(?!')[[:punct:]]| /).map(function(e) {
+      return e.replace(/[^a-zA-Z0-9]/g, '');
+    }).filter(function(e) {
+      return e.trim() !== "";
+    });
+    let returndata = {
+      "correct": [],
+      "incorrect": []
+    };
+    var list;
+
+    words.forEach(function(word) {
+      list = checker.isMisspelled(word) ? "incorrect" : "correct";
+      returndata[list].push(word);
+    });
+
+    return res.send({
+      result: "success",
+      data: returndata
+    });
+
   } catch (err) {
-    console.log("ERROR");
-    console.log(err);
-    return res.status(500).send();
+    return res.send({
+      result: "error",
+      message: "Could not execute spellchecker",
+    });
   }
 });
 
-
-/*************************************************
- Lang tool proxy
- exects a lang tool server at local host on port 8081
-
- **************************************************/
-
 app.post('/lt', (req, res) => {
+  
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  
+  
   try {
-    var proxy = require('request');
-    proxy.post({
+    
+    if (!req.body.text) {
+
+      return res.send({
+        result: "error",
+        message: 'lt: No text specified'
+      });
+
+    }
+    
+    if (!req.body.language) {
+
+      return res.send({
+        result: "error",
+        message: 'lt: No language specified'
+      });
+
+    }
+    
+    writeLog("/lt: endpoint triggered", ip, "lstokyo");
+    
+    request.post({
       url: 'http://localhost:8081/v2/check',
       form: {
         text: req.body.text,
@@ -419,98 +605,17 @@ app.post('/lt', (req, res) => {
     });
 
   } catch (err) {
-    console.log("ERROR");
-    console.log(err);
-    res.status(500).send();
+    return res.send({
+      result: "error",
+      message: "Could not execute languagetool",
+    });
   }
 });
-
-app.get("/", (req, res) => {
-
-  res.status(200).send();
-
-});
-
-app.post('/stt', (req, res) => {
-
-  console.log("new /stt endpoint triggered");
-
-  try {
-
-    if (!req.files) {
-      return res.send({
-        result: "error",
-        message: 'No file uploaded'
-      });
-    }
-
-    var tmpname = Math.random().toString(20).substr(2, 6);
-    if (req.body.scorer) {
-      var b64scorer = req.body.scorer;
-      var buf = Buffer.from(b64scorer, 'base64');
-      fs.writeFileSync("uploads/" + tmpname + "_scorer", buf);
-    }
-    fs.writeFileSync("uploads/" + tmpname + "_blob", req.files.blob.data);
-
-    var proc = ffmpeg("uploads/" + tmpname + "_blob")
-      .format('wav')
-      .audioCodec('pcm_s16le')
-      .audioBitrate(16)
-      .audioChannels(1)
-      .withAudioFrequency(16000)
-      .on('end', function() {
-
-        var model;
-
-        if (req.body.scorer) {
-          model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
-        } else {
-          model = createModel(STD_MODEL, STD_SCORER);
-        }
-
-        var beamWidth = 2000 // 500 default
-        model.setBeamWidth(beamWidth);
-
-        var maxAlternates = 10;
-        var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
-        var result = model.sttWithMetadata(audioBuffer, maxAlternates);
-
-        console.log("Result: " + JSON.stringify(result));
-
-        for (var i = 0; i < maxAlternates; i++) {
-          console.log("Transcript: " + metadataToString(result, i));
-        }
-
-        if (req.body.scorer) {
-          deleteFile("uploads/" + tmpname + "_scorer");
-        }
-        deleteFile("uploads/" + tmpname + "_blob");
-        deleteFile("uploads/converted_" + tmpname + "_blob");
-
-        return res.send({
-          result: "success",
-          message: 'File transcribed.',
-          transcript: metadataToString(result, 0),
-        });
-
-      })
-      .on('error', function(err) {
-        console.log('an error happened: ' + err.message);
-      })
-      // save to file
-      .save("uploads/converted_" + tmpname + "_blob");
-
-
-  } catch (err) {
-
-    console.log(err);
-
-  }
-
-})
 
 app.post("/yt-subs", (req, res) => {
-
+  
+  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  
   if (!req.body.videoId) {
     return res.send({
       result: "error",
@@ -524,6 +629,8 @@ app.post("/yt-subs", (req, res) => {
       message: 'No language specified'
     });
   }
+  
+  writeLog("/yt-subs: endpoint triggered", ip, "lstokyo");
 
   getSubtitles({
     videoID: req.body.videoId,
@@ -542,56 +649,11 @@ app.post("/yt-subs", (req, res) => {
 
 });
 
-app.post('/lm', (req, res) => {
-  var data = req.body.data;
-  var text = data.text;
-  console.log("** Build Scorer for " + text);
-
-  let tmpname = Math.random().toString(20).substr(2, 6);
-  let tmp_textpath = path2buildDir + 'work/' + tmpname + '.txt';
-  let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
-  write2File(tmp_textpath, text + "\n");
-
-  const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
-    if (error) {
-      console.error('stderr', stderr);
-      throw error;
-    }
-    console.log('stdout', stdout);
-
-    fs.readFile(tmp_scorerpath, function(err, data) {
-      if (err) {
-        return res.send({
-          message: 'Scorer no good',
-          result: "error"
-        });
-      } else {
-        let buff = Buffer.from(data);
-        let base64data = buff.toString('base64');
-
-        deleteFile(tmp_scorerpath);
-        deleteFile(tmp_textpath);
-
-        return res.send({
-          message: 'Scorer generated',
-          result: "success",
-          scorer: base64data
-        });
-
-
-      }
-    });
-
-  });
-
-});
-
 const port = process.env.PORT || 3000;
 
 var server = http.createServer(app);
 
-server.listen(port, () =>
-  console.log(`App is listening on port ${port}.`));
+server.listen(port, () => console.log(`App is listening on port ${port}.`));
 
 /* HELPER FUNCTIONS */
 
@@ -603,9 +665,22 @@ function deleteFile(path) {
   }
 }
 
-function write2File(path, content) {
-  fs.appendFile(path, content, function(err) {
-    if (err) return console.log(err);
-    console.log('File written');
-  });
+function writeLog(log, ip, origin) {
+  nodefetch('http://ec2-18-183-39-101.ap-northeast-1.compute.amazonaws.com:3000/write_log', {
+      method: 'post',
+      body: JSON.stringify({
+        "log": log,
+        "ip": ip,
+        "origin": origin
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+    })
+    .then(function(res) {
+      res.json()
+    })
+    .then(function(json) {
+      //do something
+    });
 }
