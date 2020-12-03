@@ -16,8 +16,11 @@ const fileUpload = require("express-fileupload");
 const ffmpeg = require("fluent-ffmpeg");
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 const SpellChecker = require('node-aspell');
+const stringSimilarity = require('string-similarity');
 
 const zipper = require('zip-local');
+
+console.log("loading english dictionary data..");
 
 const en_dict_unzipped = zipper.sync.unzip("dictionaries/en-many.zip").memory();
 const en_dict = JSON.parse(en_dict_unzipped.read("en-many.json", 'text'));
@@ -28,6 +31,8 @@ const en_dict_phrases = Object.keys(en_dict).filter(function(e) {
   return / /.test(e);
 });
 
+console.log("loading french dictionary data..");
+
 const fr_dict_unzipped = zipper.sync.unzip("dictionaries/fr-en.zip").memory();
 const fr_dict = JSON.parse(fr_dict_unzipped.read("fr-en.json", 'text'));
 const fr_dict_words = Object.keys(fr_dict).filter(function(e) {
@@ -37,6 +42,8 @@ const fr_dict_phrases = Object.keys(fr_dict).filter(function(e) {
   return / /.test(e);
 });
 
+console.log("loading spanish dictionary data..");
+
 const es_dict_unzipped = zipper.sync.unzip("dictionaries/es-en.zip").memory();
 const es_dict = JSON.parse(es_dict_unzipped.read("es-en.json", 'text'));
 const es_dict_words = Object.keys(es_dict).filter(function(e) {
@@ -45,6 +52,8 @@ const es_dict_words = Object.keys(es_dict).filter(function(e) {
 const es_dict_phrases = Object.keys(es_dict).filter(function(e) {
   return / /.test(e);
 });
+
+console.log("loading german dictionary data..");
 
 const de_dict_unzipped = zipper.sync.unzip("dictionaries/de-en.zip").memory();
 const de_dict = JSON.parse(de_dict_unzipped.read("de-en.json", 'text'));
@@ -93,12 +102,6 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(morgan('dev'));
 
-/*************************************************
- SpellCheck Something
- Called from SQS->lambda->here OR browser
-
- **************************************************/
-
 function defToText(def) {
   var text = "";
   for (var pos in def) {
@@ -111,8 +114,59 @@ function defToText(def) {
   return text;
 }
 
+app.post("/similar_words", (req, res) => {
+
+  if (!req.body.language) {
+
+    return res.send({
+      result: "error",
+      message: 'similar_words: No language included'
+    });
+
+  }
+
+  if (!req.body.word) {
+
+    return res.send({
+      result: "error",
+      message: 'similar_words: No word included'
+    });
+
+  }
+
+  var these_words;
+  switch (req.body.language) {
+    case 'fra':
+      these_words = fr_dict_words;
+      break;
+    case 'eng':
+      these_words = en_dict_words;
+      break;
+    case 'deu':
+      these_words = de_dict_words;
+      break;
+    case 'spa':
+      these_words = es_dict_words;
+      break;
+  }
+
+  var similarity;
+  var similar_words = these_words.filter(function(e) {
+    similarity = stringSimilarity.compareTwoStrings(e, req.body.word);
+    return similarity > 0.8;
+  })
+
+  return res.send({
+    result: "success",
+    data: {
+      words: similar_words
+    }
+  });
+
+});
+
 app.post("/text_to_test", (req, res) => {
-  
+
   console.log(JSON.stringify(req.body));
 
   try {
@@ -185,7 +239,7 @@ app.post("/text_to_test", (req, res) => {
 
     var re;
     output.words = this_dict_phrases.filter(function(e) {
-      re=new RegExp("\\b"+e+"\\b");
+      re = new RegExp("\\b" + e + "\\b");
       return re.test(req.body.passage);
     })
     req.body.passage.split(/[[:punct:]]| /).forEach(function(e) {
@@ -421,7 +475,7 @@ app.post('/stt', (req, res) => {
         var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
         var result = model.sttWithMetadata(audioBuffer, maxAlternates);
 
-        console.log("Result: "+JSON.stringify(result));
+        console.log("Result: " + JSON.stringify(result));
 
         for (var i = 0; i < maxAlternates; i++) {
           console.log("Transcript: " + metadataToString(result, i));
@@ -534,9 +588,7 @@ app.post('/lm', (req, res) => {
 
 const port = process.env.PORT || 3000;
 
-var options = {};
-
-var server = http.createServer(options, app);
+var server = http.createServer(app);
 
 server.listen(port, () =>
   console.log(`App is listening on port ${port}.`));
