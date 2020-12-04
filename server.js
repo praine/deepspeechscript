@@ -115,10 +115,10 @@ function defToText(def) {
   return text;
 }
 
-app.get('loaderio-29186d2b11ef511581c9d669a9257c57/',(req,res)=>{
-  
+app.get('loaderio-29186d2b11ef511581c9d669a9257c57/', (req, res) => {
+
   return res.send("loaderio-29186d2b11ef511581c9d669a9257c57");
-  
+
 });
 
 app.get("/", (req, res) => {
@@ -247,8 +247,15 @@ app.post('/stt', (req, res) => {
 
         writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
+        var id;
+        if ("id" in req.body) {
+          id = req.body.id;
+        } else {
+          id = null;
+        }
+
         return res.send({
-          id:("id" in req.body?req.body.id:null),
+          id: id,
           result: "success",
           transcript: transcript,
         });
@@ -515,7 +522,7 @@ app.post('/spellcheck', (req, res) => {
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   try {
-    
+
     if (!req.body.passage) {
 
       return res.send({
@@ -524,7 +531,7 @@ app.post('/spellcheck', (req, res) => {
       });
 
     }
-    
+
     if (!req.body.lang) {
 
       return res.send({
@@ -533,7 +540,7 @@ app.post('/spellcheck', (req, res) => {
       });
 
     }
-    
+
     writeLog("/spellcheck: endpoint triggered", ip, "lstokyo");
 
     let lang = req.body.lang; //eg "en_US"
@@ -571,12 +578,12 @@ app.post('/spellcheck', (req, res) => {
 });
 
 app.post('/lt', (req, res) => {
-  
+
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  
-  
+
+
   try {
-    
+
     if (!req.body.text) {
 
       return res.send({
@@ -585,7 +592,7 @@ app.post('/lt', (req, res) => {
       });
 
     }
-    
+
     if (!req.body.language) {
 
       return res.send({
@@ -594,9 +601,9 @@ app.post('/lt', (req, res) => {
       });
 
     }
-    
+
     writeLog("/lt: endpoint triggered", ip, "lstokyo");
-    
+
     request.post({
       url: 'http://localhost:8081/v2/check',
       form: {
@@ -621,9 +628,9 @@ app.post('/lt', (req, res) => {
 });
 
 app.post("/yt-subs", (req, res) => {
-  
+
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  
+
   if (!req.body.videoId) {
     return res.send({
       result: "error",
@@ -637,7 +644,7 @@ app.post("/yt-subs", (req, res) => {
       message: 'No language specified'
     });
   }
-  
+
   writeLog("/yt-subs: endpoint triggered", ip, "lstokyo");
 
   getSubtitles({
