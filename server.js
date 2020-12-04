@@ -184,9 +184,18 @@ app.post('/stt', (req, res) => {
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   try {
+    
+    var id;
+    
+    if (req.body.hasOwnProperty("id")) {
+      id = req.body.id;
+    } else {
+      id = null;
+    }
 
     if (!req.files) {
       return res.send({
+        id:id,
         result: "error",
         message: 'No blob specified'
       });
@@ -194,11 +203,12 @@ app.post('/stt', (req, res) => {
 
     if (!req.body.origin) {
       return res.send({
+        id:id,
         result: "error",
         message: 'No origin specified'
       });
     }
-
+    
     writeLog("/stt: endpoint triggered", ip, req.body.origin);
 
     var tmpname = Math.random().toString(20).substr(2, 6);
@@ -246,13 +256,6 @@ app.post('/stt', (req, res) => {
         var transcript = metadataToString(result, 0);
 
         writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
-
-        var id;
-        if ("id" in req.body) {
-          id = req.body.id;
-        } else {
-          id = null;
-        }
 
         return res.send({
           id: id,
