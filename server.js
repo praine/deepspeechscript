@@ -219,15 +219,16 @@ app.post('/stt', (req, res) => {
       .withAudioFrequency(16000)
       .on('end', function() {
 
-        var model;
+        var model, beamWidth;
 
         if (req.body.scorer) {
+          beamWidth = 500;
           model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
         } else {
+          beamWidth = 2000;
           model = createModel(STD_MODEL, STD_SCORER);
         }
 
-        var beamWidth = 2000 // 500 default
         model.setBeamWidth(beamWidth);
 
         var maxAlternates = 1;
@@ -247,8 +248,8 @@ app.post('/stt', (req, res) => {
         writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
         return res.send({
+          id:("id" in req.body?req.body.id:null),
           result: "success",
-          message: 'File transcribed.',
           transcript: transcript,
         });
 
