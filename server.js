@@ -14,9 +14,10 @@ const http = require('http');
 const url = require('url');
 const fileUpload = require("express-fileupload");
 const ffmpeg = require("fluent-ffmpeg");
+
+
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 const SpellChecker = require('node-aspell');
-const stringSimilarity = require('string-similarity');
 
 const zipper = require('zip-local');
 
@@ -115,12 +116,6 @@ function defToText(def) {
   return text;
 }
 
-app.get('loaderio-29186d2b11ef511581c9d669a9257c57/', (req, res) => {
-
-  return res.send("loaderio-29186d2b11ef511581c9d669a9257c57");
-
-});
-
 app.get("/", (req, res) => {
 
   return res.status(200).send();
@@ -209,7 +204,7 @@ app.post('/stt', (req, res) => {
       });
     }
     
-    writeLog("/stt: endpoint triggered", ip, req.body.origin);
+    //writeLog("/stt: endpoint triggered", ip, req.body.origin);
 
     var tmpname = Math.random().toString(20).substr(2, 6);
 
@@ -255,7 +250,7 @@ app.post('/stt', (req, res) => {
 
         var transcript = metadataToString(result, 0);
 
-        writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
+        //writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
         return res.send({
           id: id,
@@ -275,57 +270,6 @@ app.post('/stt', (req, res) => {
     writeLog("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
 
   }
-
-});
-
-app.post("/similar_words", (req, res) => {
-
-  if (!req.body.language) {
-
-    return res.send({
-      result: "error",
-      message: 'similar_words: No language included'
-    });
-
-  }
-
-  if (!req.body.word) {
-
-    return res.send({
-      result: "error",
-      message: 'similar_words: No word included'
-    });
-
-  }
-
-  var these_words;
-  switch (req.body.language) {
-    case 'fra':
-      these_words = fr_dict_words;
-      break;
-    case 'eng':
-      these_words = en_dict_words;
-      break;
-    case 'deu':
-      these_words = de_dict_words;
-      break;
-    case 'spa':
-      these_words = es_dict_words;
-      break;
-  }
-
-  var similarity;
-  var similar_words = these_words.filter(function(e) {
-    similarity = stringSimilarity.compareTwoStrings(e, req.body.word);
-    return similarity > 0.8;
-  })
-
-  return res.send({
-    result: "success",
-    data: {
-      words: similar_words
-    }
-  });
 
 });
 
@@ -666,6 +610,8 @@ app.post("/yt-subs", (req, res) => {
   });
 
 });
+
+
 
 const port = process.env.PORT || 3000;
 
