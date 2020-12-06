@@ -204,7 +204,7 @@ app.post('/stt', (req, res) => {
       });
     }
     
-    //writeLog("/stt: endpoint triggered", ip, req.body.origin);
+    writeLog("/stt: endpoint triggered", ip, req.body.origin);
 
     var tmpname = Math.random().toString(20).substr(2, 6);
 
@@ -250,7 +250,7 @@ app.post('/stt', (req, res) => {
 
         var transcript = metadataToString(result, 0);
 
-        //writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
+        writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
         return res.send({
           id: id,
