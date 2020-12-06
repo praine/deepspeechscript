@@ -401,7 +401,7 @@ app.post('/textinspector', (req, res) => {
 
   try {
 
-    nodefetch('https://' + encodeURIComponent(tiuser) + ':' + encodeURIComponent(tipw) + '@textinspector.com/api/v1/createsession', {
+    nodefetch('https://' + encodeURIComponent(tiuser) + ':' + encodeURIComponent(tipw) + '@textinspector.com/api/v2/createsession', {
       headers: {
         'accept': 'application/json'
       }
@@ -415,7 +415,7 @@ app.post('/textinspector', (req, res) => {
 
       var text = req.body.passage;
 
-      nodefetch('https://textinspector.com/api/v1/newanalysis', {
+      nodefetch('https://textinspector.com/api/v2/newanalysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +423,7 @@ app.post('/textinspector', (req, res) => {
           'Cookie': 'textinspector.session=' + sessionid
         },
         body: JSON.stringify({
-          "text": encodeURIComponent(text),
+          "text": text,
           "textmode": "Reading"
         })
       }).then(function(res) {
@@ -434,7 +434,7 @@ app.post('/textinspector', (req, res) => {
         console.log("Got context: " + ctxId);
 
 
-        nodefetch('https://textinspector.com/api/v1/' + ctxId + '/doc1/tiprofile', {
+        nodefetch('https://textinspector.com/api/v2/' + ctxId + '/doc1/tiprofile', {
           headers: {
             'accept': 'application/json',
             'Cookie': 'textinspector.session=' + sessionid
