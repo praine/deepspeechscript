@@ -148,6 +148,7 @@ function convertAndTranscribe(audiofile, scorerfile){
 
     var proc = ffmpeg(audiofile)
         .format('wav')
+	.audioFilters('afftdn')
         .audioCodec('pcm_s16le')
         .audioBitrate(16)
         .audioChannels(1)
