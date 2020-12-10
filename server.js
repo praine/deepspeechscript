@@ -2,6 +2,7 @@
     Standard imports
  **************************************************/
 const express = require('express');
+const queue = require('express-queue');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
@@ -14,7 +15,8 @@ const http = require('http');
 const url = require('url');
 const fileUpload = require("express-fileupload");
 const ffmpeg = require("fluent-ffmpeg");
-
+const ACTIVE_LIMIT = 2;
+const QUEUED_LIMIT = 100;
 
 const getSubtitles = require('youtube-captions-scraper').getSubtitles;
 const SpellChecker = require('node-aspell');
@@ -103,6 +105,26 @@ app.use(bodyParser.urlencoded({
 }));
 app.use(morgan('dev'));
 app.use(express.static('public'));
+const queueMw = queue({
+  activeLimit: ACTIVE_LIMIT,
+  queuedLimit: QUEUED_LIMIT,
+  rejectHandler: (req, res) => {
+    var id;
+    if (req.body.hasOwnProperty("id")) {
+      id = req.body.id;
+    } else {
+      id = null;
+    }
+    return res.send({
+      id: id,
+      result: "error",
+      message: 'Server busy. Please try again.'
+    });
+  }
+});
+
+
+app.use(queueMw);
 
 function defToText(def) {
   var text = "";
@@ -176,12 +198,14 @@ app.post('/lm', (req, res) => {
 
 app.post('/stt', (req, res) => {
 
+  console.log(`queueLength: ${queueMw.queue.getLength()}`);
+
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
   try {
-    
+
     var id;
-    
+
     if (req.body.hasOwnProperty("id")) {
       id = req.body.id;
     } else {
@@ -190,7 +214,7 @@ app.post('/stt', (req, res) => {
 
     if (!req.files) {
       return res.send({
-        id:id,
+        id: id,
         result: "error",
         message: 'No blob specified'
       });
@@ -198,12 +222,12 @@ app.post('/stt', (req, res) => {
 
     if (!req.body.origin) {
       return res.send({
-        id:id,
+        id: id,
         result: "error",
         message: 'No origin specified'
       });
     }
-    
+
     writeLog("/stt: endpoint triggered", ip, req.body.origin);
 
     var tmpname = Math.random().toString(20).substr(2, 6);
