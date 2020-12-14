@@ -2,6 +2,7 @@
     Standard imports
  **************************************************/
 const express = require('express');
+const queue = require('express-queue');
 const fileUpload = require('express-fileupload');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -21,7 +22,29 @@ const http = require('http');
 const crypto = require('crypto');
 const ffmpeg = require('fluent-ffmpeg');
 const url = require('url');
+const ACTIVE_LIMIT = 2;
+const QUEUED_LIMIT = 100;
 
+/*************************************************
+ Request Queue
+ **************************************************/
+const queueMw = queue({
+    activeLimit: ACTIVE_LIMIT,
+    queuedLimit: QUEUED_LIMIT,
+    rejectHandler: (req, res) => {
+        var id;
+        if (req.body.hasOwnProperty("id")) {
+            id = req.body.id;
+        } else {
+            id = null;
+        }
+        return res.send({
+            id: id,
+            result: "error",
+            message: 'Server busy. Please try again.'
+        });
+    }
+});
 /*************************************************
     Initial values for models,
     change path or name here
@@ -243,6 +266,7 @@ app.use(bodyParser.urlencoded({
 		extended: true
 	}));
 app.use(morgan('dev'));
+app.use(queueMw);
 app.set("view engine", "ejs");
 app.get('/', (req, res) => {
 	res.render('index');
