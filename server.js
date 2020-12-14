@@ -161,6 +161,11 @@ function convertAndTranscribe(audiofile, scorerfile){
                 console.log('file has been converted succesfully');
 
                 var model = createModel(STD_MODEL, scorerfile);
+                var beamwidth=500;
+                if(scorerfile==STD_SCORER){
+                    beamwidth=2000;
+                }
+                model.setBeamWidth(beamwidth);
                 var audioBuffer = fs.readFileSync(convfile);
                 var result = model.sttWithMetadata(audioBuffer);
 
