@@ -376,7 +376,8 @@ app.post("/text_to_test", (req, res) => {
       re = new RegExp("\\b" + e + "\\b");
       return re.test(req.body.passage);
     })
-    req.body.passage.split(/[[:punct:]]| /).forEach(function(e) {
+    req.body.passage.split(/[.,!?:;\[\]\(\)" ]/).forEach(function(e) {
+      console.log(e);
       if (this_dict_words.includes(e) && !output.words.includes(e)) {
         output.words.push(e);
       }
@@ -391,6 +392,15 @@ app.post("/text_to_test", (req, res) => {
         "active": false,
       })
     })
+    
+    output.words.sort(function(a,b){return b.length-a.length;});
+    
+    
+    output.definitions.sort(function(a,b){
+      
+      return b.word.length-a.word.length;
+      
+    });
 
     return res.send({
       result: "success",
