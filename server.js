@@ -17,7 +17,7 @@ const fileUpload = require("express-fileupload");
 const ffmpeg = require("fluent-ffmpeg");
 const nodefetch = require('node-fetch');
 
-const ACTIVE_LIMIT = 2;
+const ACTIVE_LIMIT = 1;
 const QUEUED_LIMIT = 100;
 const STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
 const STD_SCORER = "./deepspeech-0.7.3-models.scorer"
@@ -130,7 +130,7 @@ app.post('/lm', (req, res) => {
 
 app.post('/stt', (req, res) => {
 
-  console.log(`queueLength: ${queueMw.queue.getLength()}`);
+  writeLog(`queueLength: ${queueMw.queue.getLength()}`);
 
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
@@ -224,7 +224,6 @@ app.post('/stt', (req, res) => {
 
   } catch (err) {
     writeLog("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
-
   }
 
 });
