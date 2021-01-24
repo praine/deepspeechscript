@@ -24,6 +24,8 @@ const ffmpeg = require('fluent-ffmpeg');
 const url = require('url');
 const ACTIVE_LIMIT = 2;
 const QUEUED_LIMIT = 100;
+const speech = require('@google-cloud/speech');
+const client = new speech.SpeechClient();
 
 /*************************************************
  Request Queue
@@ -272,6 +274,8 @@ app.get('/', (req, res) => {
 	res.render('index');
 });
 
+
+
 /*************************************************
     Main method for /transcribe
  takes wav files rom request from browser and returns trancscript
@@ -290,54 +294,100 @@ app.post('/transcribe', async(req, res) => {
             // you may have to change it 
 			let audio_input = req.files.audioFile;
 			let scorer = req.body.scorer;
+			let lang = req.body.lang;
+			
+			//IF LANG is NOT ENGLISH -> Google Cloud Speech
+			//if we have a lang and its not English, we are google cloud speech'ing this one
+			if(lang!=null && lang!=undefined && lang.substr(2)!='en'){
+			            var audioBytes = data.Body.toString('base64');
+				const audio = { content: audioBytes };
+				const config = {
+					encoding: 'LINER16',
+					sampeRateHertz: samplerate,
+					languageCode: jobdata.language,
+					enableAutomaticPunctuation: true,
+					enableWordTimeOffsets: true
+				};
+				const request = {
+					audio: audio,
+					config: config,
+				};
 
-			//Use the mv() method to save the file in upload directory (i.e. "uploads")
-			var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
-			audio_input.mv('./uploads/' + tmpname);
+				client.recognize(request).then(
+					data => {
+						const response = data[0];
+						const transcription = response.results.map(
+							result => result.alternatives[0].transcript
+						).join('\n');
+						const fulltranscription = response.results.map(
+							result => result.alternatives[0]);
+	
+						console.log(transcription);
+						console.log(fulltranscription);
+						
+						//send response
+						res.send({
+							status: true,
+							message: 'File uploaded and transcribed.',
+							data: {
+								transcript: transcription,
+								result: 'success'
+							}
+						});
+					}
+				).catch(function (error) {
+					console.log(error.message);
+					res.status(500).send();
+				});
+				
+			} else {
+				//IF LANG is ENGLISH -> DEEP SPEECH
+				
+				//Use the mv() method to save the file in upload directory (i.e. "uploads")
+				var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
+				audio_input.mv('./uploads/' + tmpname);
 
-            // get Length for initial testing
-			const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
-			console.log('- audio length', audioLength);
+				// get Length for initial testing
+				const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
+				console.log('- audio length', audioLength);
 
-			// model creation at this point to be able to switch scorer here
-            // we will load diff lang models (Eng. vocab sets) depending on the vocab param
-            var usescorer = STD_SCORER;
-            if(scorer && scorer!=='none'){
-              usescorer = SCORERS_FOLDER + 'id-' + scorer + '.scorer';
-              if (!fs.existsSync(usescorer)) {
-                  usescorer = STD_SCORER;
-              }
-             }
+				// model creation at this point to be able to switch scorer here
+				// we will load diff lang models (Eng. vocab sets) depending on the vocab param
+				var usescorer = STD_SCORER;
+				if(scorer && scorer!=='none'){
+				  usescorer = SCORERS_FOLDER + 'id-' + scorer + '.scorer';
+				  if (!fs.existsSync(usescorer)) {
+					  usescorer = STD_SCORER;
+				  }
+				 }
 
+				
+				convertAndTranscribe('./uploads/' + tmpname,usescorer).then(function (metadata) {
+					var transcription = metadataToString(metadata);
+					console.log("Transcription: " + transcription);
 
-            convertAndTranscribe('./uploads/' + tmpname,usescorer).then(function (metadata) {
+					//send response
+					res.send({
+						status: true,
+						message: 'File uploaded and transcribed.',
+						data: {
+							transcript: transcription,
+							result: 'success'
+						}
+					});
 
-                var transcription = metadataToString(metadata);
-                console.log("Transcription: " + transcription);
-
-                //send response
-                res.send({
-                    status: true,
-                    message: 'File uploaded and transcribed.',
-                    data: {
-                        transcript: transcription,
-                        result: 'success'
-                    }
-                });
-
-            }).catch(function (error) {
-                console.log(error.message);
-                res.status(500).send();
-            });
-
-		}
+				}).catch(function (error) {
+					console.log(error.message);
+					res.status(500).send();
+				});
+			}//end of if lang!=en
+		}//end of !req.files
 	} catch (err) {
 		console.log("ERROR");
 		console.log(err);
 		res.status(500).send();
 	}
 });
-
 
 /*************************************************
     Main method for /s3transcribeReturn
