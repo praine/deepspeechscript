@@ -375,6 +375,7 @@ app.post('/transcribe', async(req, res) => {
 			let audio_input = req.files.audioFile;
 			let scorer = req.body.scorer;
 			let lang = req.body.lang;
+			console.log('lang',lang);
 			
 			//Use the mv() method to save the file in upload directory (i.e. "uploads")
 			var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
