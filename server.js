@@ -162,6 +162,85 @@ function bufferToStream(buffer) {
 /*************************************************
     Use FFMPEG to convert any audio input to
     mono 16bit PCM 16Khz
+    then run Google Speech in a stream
+
+    change sttWithMetadata() to stt() if needed
+ **************************************************/
+
+function convertAndGspeechTranscribe(audiofile, lang){
+    var convfile = audiofile + '_conv';
+    console.log('audiofile',audiofile);
+
+    var proc = ffmpeg(audiofile)
+        .format('wav')
+        .audioFilters(['afftdn'])
+        .audioCodec('pcm_s16le')
+        .audioBitrate(16)
+        .audioChannels(1)
+        .withAudioFrequency(STD_SAMPLE_RATE);
+
+        //return the promise we use as response
+        var thepromise = new Promise(function (resolve, reject) {
+            proc.on('end', () => {
+
+                console.log('file has been converted succesfully');
+
+                
+                var audioBuffer = fs.readFileSync(convfile);
+                var audioBytes = audioBuffer.toString('base64');
+				const audio = { content: audioBytes };
+				var samplerate = 44100;
+				const config = {
+					encoding: 'LINER16',
+					sampeRateHertz: samplerate,
+					languageCode: lang,
+					enableAutomaticPunctuation: false,
+					enableWordTimeOffsets: false
+				};
+				const request = {
+					audio: audio,
+					config: config,
+				};
+
+				gspeechclient.recognize(request).then(
+					data => {
+						const response = data[0];
+						const transcription = response.results.map(
+							result => result.alternatives[0].transcript
+						).join('\n');
+						const fulltranscription = response.results.map(
+							result => result.alternatives[0]);
+	
+						console.log(transcription);
+						console.log(fulltranscription);
+						deleteFile(audiofile);
+                        deleteFile(convfile);
+                        resolve(transcription);
+						
+					}
+				).catch(function (error) {
+					console.log(error.message);
+					res.status(500).send();
+				});
+
+            });
+        });
+
+        //if we have an error
+        proc.on('error', function(err) {
+            console.log('an error happened: ' + err.message);
+        });
+
+        // save to file
+        proc.save(convfile);
+
+        //return our promise
+       return thepromise;
+}
+
+/*************************************************
+    Use FFMPEG to convert any audio input to
+    mono 16bit PCM 16Khz
     then run DeepSpeech in a stream
 
     change sttWithMetadata() to stt() if needed
@@ -296,59 +375,32 @@ app.post('/transcribe', async(req, res) => {
 			let scorer = req.body.scorer;
 			let lang = req.body.lang;
 			
+			//Use the mv() method to save the file in upload directory (i.e. "uploads")
+			var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
+			audio_input.mv('./uploads/' + tmpname);
+			
 			
 			//IF LANG is NOT ENGLISH -> Google Cloud Speech
 			//if we have a lang and its not English, we are google cloud speech'ing this one
 			if(lang!=null && lang!=undefined && lang.substr(2)!='en'){
-			    var audioBytes = audio_input.data.toString('base64');
-				const audio = { content: audioBytes };
-				var samplerate = 44100;
-				const config = {
-					encoding: 'LINER16',
-					sampeRateHertz: samplerate,
-					languageCode: lang,
-					enableAutomaticPunctuation: false,
-					enableWordTimeOffsets: false
-				};
-				const request = {
-					audio: audio,
-					config: config,
-				};
+			    convertAndGspeechTranscribe('./uploads/' + tmpname,lang).then(function(transcription){
+					//send response
+					res.send({
+						status: true,
+						message: 'File uploaded and transcribed.',
+						data: {
+							transcript: transcription,
+							result: 'success'
+						}
+					});
 
-				gspeechclient.recognize(request).then(
-					data => {
-						const response = data[0];
-						const transcription = response.results.map(
-							result => result.alternatives[0].transcript
-						).join('\n');
-						const fulltranscription = response.results.map(
-							result => result.alternatives[0]);
-	
-						console.log(transcription);
-						console.log(fulltranscription);
-						
-						//send response
-						res.send({
-							status: true,
-							message: 'File uploaded and transcribed.',
-							data: {
-								transcript: transcription,
-								result: 'success'
-							}
-						});
-					}
-				).catch(function (error) {
+				}).catch(function (error) {
 					console.log(error.message);
 					res.status(500).send();
 				});
 				
 			} else {
 				//IF LANG is ENGLISH -> DEEP SPEECH
-				
-				//Use the mv() method to save the file in upload directory (i.e. "uploads")
-				var tmpname = Math.random().toString(20).substr(2, 6) + '.wav';
-				audio_input.mv('./uploads/' + tmpname);
-
 				// get Length for initial testing
 				const audioLength = (audio_input.data.length / 2) * (1 / STD_SAMPLE_RATE);
 				console.log('- audio length', audioLength);
