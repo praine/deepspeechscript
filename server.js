@@ -299,7 +299,7 @@ app.post('/transcribe', async(req, res) => {
 			//IF LANG is NOT ENGLISH -> Google Cloud Speech
 			//if we have a lang and its not English, we are google cloud speech'ing this one
 			if(lang!=null && lang!=undefined && lang.substr(2)!='en'){
-			            var audioBytes = data.Body.toString('base64');
+			    var audioBytes = audio_input.toString('base64');
 				const audio = { content: audioBytes };
 				const config = {
 					encoding: 'LINER16',
