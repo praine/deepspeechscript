@@ -24,6 +24,8 @@ const ffmpeg = require('fluent-ffmpeg');
 const url = require('url');
 const ACTIVE_LIMIT = 2;
 const QUEUED_LIMIT = 100;
+
+process.env.GOOGLE_APPLICATION_CREDENTIALS='/home/deepserver/gcloud_client_secret.json';
 const gspeech = require('@google-cloud/speech');
 const gspeechclient = new gspeech.SpeechClient();
 
