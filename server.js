@@ -19,7 +19,7 @@ const nodefetch = require('node-fetch');
 
 const ACTIVE_LIMIT = 1;
 const QUEUED_LIMIT = 100;
-const STD_MODEL = "/home/ubuntu/deepspeech-0.9.3-models.pbmm"
+const STD_MODEL = "/home/ubuntu/deepspeech-0.9.3-models.tflite"
 const STD_SCORER = "/home/ubuntu/deepspeech-0.9.3-models.scorer"
 const STD_SAMPLE_RATE = 16000;
 
