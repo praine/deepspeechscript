@@ -19,11 +19,9 @@ const nodefetch = require('node-fetch');
 
 const ACTIVE_LIMIT = 1;
 const QUEUED_LIMIT = 100;
-const STD_MODEL = "./deepspeech-0.7.3-models.pbmm"
-const STD_SCORER = "./deepspeech-0.7.3-models.scorer"
+const STD_MODEL = "/home/ubuntu/deepspeech-0.9.3-models.pbmm"
+const STD_SCORER = "/home/ubuntu/deepspeech-0.9.3-models.scorer"
 const STD_SAMPLE_RATE = 16000;
-const execFile = require('child_process').execFile;
-const path2buildDir = "/home/scorerbuilder/";
 
 function createModel(modelPath, scorerPath) {
   let model = new DeepSpeech.Model(modelPath);
@@ -76,61 +74,9 @@ app.get("/", (req, res) => {
 
 });
 
-app.post('/lm', (req, res) => {
-
-  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-  if (!req.body.text) {
-    return res.send({
-      result: "error",
-      message: 'No text specified'
-    });
-  }
-
-  if (!req.body.origin) {
-    return res.send({
-      result: "error",
-      message: 'No origin specified'
-    });
-  }
-
-  writeLog("/lm: endpoint triggered", ip, req.body.origin);
-
-  let tmpname = Math.random().toString(20).substr(2, 6);
-  let tmp_textpath = path2buildDir + 'work/' + tmpname + '.txt';
-  let tmp_scorerpath = path2buildDir + 'work/' + tmpname + '.scorer';
-  fs.appendFileSync(tmp_textpath, req.body.text + "\n");
-
-  const child = execFile(path2buildDir + "ttd-lm.sh", [tmpname], (error, stdout, stderr) => {
-
-    console.log(stdout);
-
-    if (error) {
-      writeLog("/lm: error generating scorer", ip, req.body.origin);
-      return res.send({
-        result: "error",
-        message: 'Unable to generate scorer'
-      });
-    }
-
-    var data = fs.readFileSync(tmp_scorerpath);
-    writeLog("/lm: scorer generated", ip, req.body.origin);
-
-    deleteFile(tmp_scorerpath);
-    deleteFile(tmp_textpath);
-
-    return res.send({
-      result: "success",
-      scorer: Buffer.from(data).toString('base64')
-    });
-
-  });
-
-});
-
 app.post('/stt', (req, res) => {
 
-  writeLog(`queueLength: ${queueMw.queue.getLength()}`);
+  console.log(`queueLength: ${queueMw.queue.getLength()}`);
 
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
@@ -160,19 +106,19 @@ app.post('/stt', (req, res) => {
       });
     }
 
-    writeLog("/stt: endpoint triggered", ip, req.body.origin);
+    console.log("/stt: endpoint triggered", ip, req.body.origin);
 
     var tmpname = Math.random().toString(20).substr(2, 6);
 
     if (req.body.scorer) {
       var b64scorer = req.body.scorer;
       var buf = Buffer.from(b64scorer, 'base64');
-      fs.writeFileSync("uploads/" + tmpname + "_scorer", buf);
+      fs.writeFileSync("/home/ubuntu/uploads/" + tmpname + "_scorer", buf);
     }
 
-    fs.writeFileSync("uploads/" + tmpname + "_blob", req.files.blob.data);
+    fs.writeFileSync("/home/ubuntu/uploads/" + tmpname + "_blob", req.files.blob.data);
 
-    var proc = ffmpeg("uploads/" + tmpname + "_blob")
+    var proc = ffmpeg("/home/ubuntu/uploads/" + tmpname + "_blob")
       .format('wav')
       .audioCodec('pcm_s16le')
       .audioBitrate(16)
@@ -184,7 +130,7 @@ app.post('/stt', (req, res) => {
 
         if (req.body.scorer) {
           beamWidth = 500;
-          model = createModel(STD_MODEL, "uploads/" + tmpname + "_scorer");
+          model = createModel(STD_MODEL, "/home/ubuntu/uploads/" + tmpname + "_scorer");
         } else {
           beamWidth = 2000;
           model = createModel(STD_MODEL, STD_SCORER);
@@ -193,20 +139,20 @@ app.post('/stt', (req, res) => {
         model.setBeamWidth(beamWidth);
 
         var maxAlternates = 1;
-        var audioBuffer = fs.readFileSync("uploads/converted_" + tmpname + "_blob");
+        var audioBuffer = fs.readFileSync("/home/ubuntu/uploadsconverted_" + tmpname + "_blob");
 
         var result = model.sttWithMetadata(audioBuffer, maxAlternates);
 
         if (req.body.scorer) {
-          deleteFile("uploads/" + tmpname + "_scorer");
+          deleteFile("/home/ubuntu/uploads/" + tmpname + "_scorer");
         }
 
-        deleteFile("uploads/" + tmpname + "_blob");
-        deleteFile("uploads/converted_" + tmpname + "_blob");
+        deleteFile("/home/ubuntu/uploads/" + tmpname + "_blob");
+        deleteFile("/home/ubuntu/uploadsconverted_" + tmpname + "_blob");
 
         var transcript = metadataToString(result, 0);
 
-        writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
+        console.log("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
         return res.send({
           id: id,
@@ -216,14 +162,14 @@ app.post('/stt', (req, res) => {
 
       })
       .on('error', function(err) {
-        writeLog("/stt: error (" + err.message + ")", ip, req.body.origin);
+        console.log("/stt: error (" + err.message + ")", ip, req.body.origin);
       })
       // save to file
-      .save("uploads/converted_" + tmpname + "_blob");
+      .save("/home/ubuntu/uploadsconverted_" + tmpname + "_blob");
 
 
   } catch (err) {
-    writeLog("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
+    console.log("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
   }
 
 });
@@ -242,24 +188,4 @@ function deleteFile(path) {
   } catch (err) {
     console.log(err);
   }
-}
-
-function writeLog(log, ip, origin) {
-  nodefetch('http://ec2-18-183-39-101.ap-northeast-1.compute.amazonaws.com:3000/write_log', {
-      method: 'post',
-      body: JSON.stringify({
-        "log": log,
-        "ip": ip,
-        "origin": origin
-      }),
-      headers: {
-        'Content-Type': 'application/json'
-      },
-    })
-    .then(function(res) {
-      res.json()
-    })
-    .then(function(json) {
-      //do something
-    });
 }
