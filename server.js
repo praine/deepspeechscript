@@ -415,7 +415,8 @@ app.post('/transcribe', async(req, res) => {
 					  usescorer = STD_SCORER;
 				  }
 				 }
-				 console.log('-scorer: ', usescorer);
+				 console.log('-scorer: ', scorer);
+				 console.log('-usescorer: ', usescorer);
 
 				
 				convertAndTranscribe('./uploads/' + tmpname,usescorer).then(function (metadata) {
