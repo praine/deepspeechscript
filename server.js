@@ -24,9 +24,9 @@ const ffmpeg = require('fluent-ffmpeg');
 const url = require('url');
 const ACTIVE_LIMIT = 2;
 const QUEUED_LIMIT = 100;
-const speech = require('@google-cloud/speech');
-const client = new speech.SpeechClient();
-
+const gspeech = require('@google-cloud/speech');
+const gspeechclient = new gspeech.SpeechClient();
+console.log(process.env);
 /*************************************************
  Request Queue
  **************************************************/
@@ -315,7 +315,7 @@ app.post('/transcribe', async(req, res) => {
 					config: config,
 				};
 
-				client.recognize(request).then(
+				gspeechclient.recognize(request).then(
 					data => {
 						const response = data[0];
 						const transcription = response.results.map(
