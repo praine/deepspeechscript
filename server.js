@@ -296,17 +296,19 @@ app.post('/transcribe', async(req, res) => {
 			let scorer = req.body.scorer;
 			let lang = req.body.lang;
 			
+			
 			//IF LANG is NOT ENGLISH -> Google Cloud Speech
 			//if we have a lang and its not English, we are google cloud speech'ing this one
 			if(lang!=null && lang!=undefined && lang.substr(2)!='en'){
 			    var audioBytes = audio_input.toString('base64');
 				const audio = { content: audioBytes };
+				var samplerate = 44100;
 				const config = {
 					encoding: 'LINER16',
 					sampeRateHertz: samplerate,
-					languageCode: jobdata.language,
-					enableAutomaticPunctuation: true,
-					enableWordTimeOffsets: true
+					languageCode: lang,
+					enableAutomaticPunctuation: false,
+					enableWordTimeOffsets: false
 				};
 				const request = {
 					audio: audio,
