@@ -26,7 +26,7 @@ const ACTIVE_LIMIT = 2;
 const QUEUED_LIMIT = 100;
 const gspeech = require('@google-cloud/speech');
 const gspeechclient = new gspeech.SpeechClient();
-console.log(process.env);
+
 /*************************************************
  Request Queue
  **************************************************/
@@ -300,7 +300,7 @@ app.post('/transcribe', async(req, res) => {
 			//IF LANG is NOT ENGLISH -> Google Cloud Speech
 			//if we have a lang and its not English, we are google cloud speech'ing this one
 			if(lang!=null && lang!=undefined && lang.substr(2)!='en'){
-			    var audioBytes = audio_input.toString('base64');
+			    var audioBytes = audio_input.data.toString('base64');
 				const audio = { content: audioBytes };
 				var samplerate = 44100;
 				const config = {
