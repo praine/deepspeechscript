@@ -118,54 +118,38 @@ app.post('/stt', (req, res) => {
 
     fs.writeFileSync("/home/ubuntu/uploads/" + tmpname + "_blob", req.files.blob.data);
 
-    var proc = ffmpeg("/home/ubuntu/uploads/" + tmpname + "_blob")
-      .format('wav')
-      .audioCodec('pcm_s16le')
-      .audioBitrate(16)
-      .audioChannels(1)
-      .withAudioFrequency(16000)
-      .on('end', function() {
+    var model, beamWidth;
 
-        var model, beamWidth;
+    if (req.body.scorer) {
+      beamWidth = 500;
+      model = createModel(STD_MODEL, "/home/ubuntu/uploads/" + tmpname + "_scorer");
+    } else {
+      beamWidth = 2000;
+      model = createModel(STD_MODEL, STD_SCORER);
+    }
 
-        if (req.body.scorer) {
-          beamWidth = 500;
-          model = createModel(STD_MODEL, "/home/ubuntu/uploads/" + tmpname + "_scorer");
-        } else {
-          beamWidth = 2000;
-          model = createModel(STD_MODEL, STD_SCORER);
-        }
+    model.setBeamWidth(beamWidth);
 
-        model.setBeamWidth(beamWidth);
+    var maxAlternates = 1;
+    var audioBuffer = fs.readFileSync("/home/ubuntu/uploads/" + tmpname + "_blob");
 
-        var maxAlternates = 1;
-        var audioBuffer = fs.readFileSync("/home/ubuntu/uploadsconverted_" + tmpname + "_blob");
+    var result = model.sttWithMetadata(audioBuffer, maxAlternates);
 
-        var result = model.sttWithMetadata(audioBuffer, maxAlternates);
+    if (req.body.scorer) {
+      deleteFile("/home/ubuntu/uploads/" + tmpname + "_scorer");
+    }
 
-        if (req.body.scorer) {
-          deleteFile("/home/ubuntu/uploads/" + tmpname + "_scorer");
-        }
+    deleteFile("/home/ubuntu/uploads/" + tmpname + "_blob");
 
-        deleteFile("/home/ubuntu/uploads/" + tmpname + "_blob");
-        deleteFile("/home/ubuntu/uploadsconverted_" + tmpname + "_blob");
+    var transcript = metadataToString(result, 0);
 
-        var transcript = metadataToString(result, 0);
+    console.log("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
-        console.log("/stt: got result (" + transcript + ")", ip, req.body.origin);
-
-        return res.send({
-          id: id,
-          result: "success",
-          transcript: transcript,
-        });
-
-      })
-      .on('error', function(err) {
-        console.log("/stt: error (" + err.message + ")", ip, req.body.origin);
-      })
-      // save to file
-      .save("/home/ubuntu/uploadsconverted_" + tmpname + "_blob");
+    return res.send({
+      id: id,
+      result: "success",
+      transcript: transcript,
+    });
 
 
   } catch (err) {
