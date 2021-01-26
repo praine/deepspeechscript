@@ -75,7 +75,7 @@ app.get("/", (req, res) => {
 
 app.post('/stt', (req, res) => {
 
-  console.log(`queueLength: ${queueMw.queue.getLength()}`);
+  writeLog(`queueLength: ${queueMw.queue.getLength()}`);
 
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
@@ -105,7 +105,7 @@ app.post('/stt', (req, res) => {
       });
     }
 
-    console.log("/stt: endpoint triggered", ip, req.body.origin);
+    writeLog("/stt: endpoint triggered", ip, req.body.origin);
 
     var tmpname = Math.random().toString(20).substr(2, 6);
 
@@ -142,7 +142,7 @@ app.post('/stt', (req, res) => {
 
     var transcript = metadataToString(result, 0);
 
-    console.log("/stt: got result (" + transcript + ")", ip, req.body.origin);
+    writeLog("/stt: got result (" + transcript + ")", ip, req.body.origin);
 
     return res.send({
       id: id,
@@ -152,7 +152,7 @@ app.post('/stt', (req, res) => {
 
 
   } catch (err) {
-    console.log("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
+    writeLog("/stt: error (" + JSON.stringify(err) + ")", ip, req.body.origin);
   }
 
 });
@@ -171,4 +171,24 @@ function deleteFile(path) {
   } catch (err) {
     console.log(err);
   }
+}
+
+function writeLog(log, ip, origin) {
+  nodefetch('http://ec2-18-183-39-101.ap-northeast-1.compute.amazonaws.com:3000/write_log', {
+      method: 'post',
+      body: JSON.stringify({
+        "log": log,
+        "ip": ip,
+        "origin": origin
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+    })
+    .then(function(res) {
+      res.json()
+    })
+    .then(function(json) {
+      //do something
+    });
 }
