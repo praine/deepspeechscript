@@ -14,7 +14,6 @@ const fs = require('fs');
 const http = require('http');
 const url = require('url');
 const fileUpload = require("express-fileupload");
-const ffmpeg = require("fluent-ffmpeg");
 const nodefetch = require('node-fetch');
 
 const ACTIVE_LIMIT = 1;

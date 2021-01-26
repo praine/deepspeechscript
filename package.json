@@ -17,7 +17,6 @@
     "express": "^4.17.1",
     "express-fileupload": "^1.1.7-alpha.3",
     "express-queue": "git+https://github.com/pmoleri/express-queue.git",
-    "fluent-ffmpeg": "^2.1.2",
     "https": "^1.0.0",
     "lodash": "^4.17.20",
     "memory-stream": "^1.0.0",
