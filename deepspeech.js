@@ -46,7 +46,9 @@ process.on('message', (message) => {
 
     process.send({
       transcript: transcript,
-      id: message.value.id
+      id: message.value.id,
+      ip: message.value.ip,
+      origin: message.value.origin
     });
   }
 });

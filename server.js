@@ -8,7 +8,9 @@ const http = require('http');
 const url = require('url');
 const fileUpload = require("express-fileupload");
 const nodefetch = require('node-fetch');
-const {ForkQueue} = require('node-fork-queue');
+const {
+  ForkQueue
+} = require('node-fork-queue');
 const queue = new ForkQueue({
   processFilePath: `${__dirname}/deepspeech.js`,
   maxPoolSize: 5,
@@ -76,9 +78,11 @@ app.post('/stt', async function(req, res) {
   queue.push({
     action: "start",
     tmpname: tmpname,
-    id: id
+    id: id,
+    origin: req.body.origin,
+    ip: ip
   }, function(response) {
-    writeLog("/stt: got result (" + result.transcript + ")", ip, req.body.origin);
+    writeLog("/stt: got result (" + response.transcript + ")", response.ip, response.origin);
     return res.send({
       id: response.id,
       result: "success",
