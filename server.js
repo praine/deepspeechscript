@@ -9,6 +9,12 @@ const url = require('url');
 const fileUpload = require("express-fileupload");
 const nodefetch = require('node-fetch');
 const {ForkQueue} = require('node-fork-queue');
+const queue = new ForkQueue({
+  processFilePath: `${__dirname}/deepspeech.js`,
+  maxPoolSize: 5,
+  minPoolSize: 2,
+  idleTimeoutMillis: 30000,
+});
 
 app.use(fileUpload({
   createParentPath: true
@@ -19,14 +25,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
-
-// Initialize ForkQueue
-const queue = new ForkQueue({
-  processFilePath: `${__dirname}/deepspeech.js`,
-  maxPoolSize: 5,
-  minPoolSize: 2,
-  idleTimeoutMillis: 30000,
-});
 
 app.get("/", (req, res) => {
 
