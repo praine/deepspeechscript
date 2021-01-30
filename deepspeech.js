@@ -35,7 +35,7 @@ process.on('message', (message) => {
       fs.unlinkSync(scorerPath);
     }
 
-    if (fs.existsSync(scorerPath)) {
+    if (fs.existsSync(blobPath)) {
       console.log("deleting blob..");
       fs.unlinkSync(blobPath);
     }
