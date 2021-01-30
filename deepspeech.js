@@ -1,69 +1,55 @@
 const DeepSpeech = require('deepspeech');
 const fs = require('fs');
-const STD_MODEL = "/home/ubuntu/deepspeech-0.9.3-models.tflite"
+const STD_MODEL = "/home/ubuntu/deepspeech-0.9.3-models.pbmm"
 const STD_SCORER = "/home/ubuntu/deepspeech-0.9.3-models.scorer"
 const STD_SAMPLE_RATE = 16000;
 
-const {
-  workerData,
-  parentPort
-} = require('worker_threads')
+process.on('message', (message) => {
 
-console.log("starting recognition..");
+  if (message.value.action == 'start') {
 
-var tmpname = Math.random().toString(20).substr(2, 6);
+    console.log("starting recognition..");
 
-if (workerData.scorer) {
-  var b64scorer = workerData.scorer;
-  var buf = Buffer.from(b64scorer, 'base64');
-  console.log("writing scorer..");
-  fs.writeFileSync("/home/ubuntu/uploads/" + tmpname + "_scorer", buf);
-}
+    var model, beamWidth, scorerPath = "/home/ubuntu/uploads/" + message.value.tmpname + "_scorer",
+      blobPath = "/home/ubuntu/uploads/" + message.value.tmpname + "_blob";
 
-fs.writeFileSync("/home/ubuntu/uploads/" + tmpname + "_blob", workerData.blob);
+    if (fs.existsSync(scorerPath)) {
+      beamWidth = 500;
+      console.log("creating model with custom scorer..");
+      model = createModel(STD_MODEL, scorerPath);
+    } else {
+      beamWidth = 2000;
+      console.log("creating model with standard scorer..");
+      model = createModel(STD_MODEL, STD_SCORER);
+    }
 
-var model, beamWidth;
+    model.setBeamWidth(beamWidth);
 
-if (workerData.scorer) {
-  beamWidth = 500;
-  console.log("creating model with custom scorer..");
-  model = createModel(STD_MODEL, "/home/ubuntu/uploads/" + tmpname + "_scorer");
-} else {
-  beamWidth = 2000;
-  console.log("creating model with standard scorer..");
-  model = createModel(STD_MODEL, STD_SCORER);
-}
+    var maxAlternates = 1;
+    var audioBuffer = fs.readFileSync(blobPath);
 
-model.setBeamWidth(beamWidth);
+    var result = model.sttWithMetadata(audioBuffer, maxAlternates);
 
-var maxAlternates = 1;
-var audioBuffer = fs.readFileSync("/home/ubuntu/uploads/" + tmpname + "_blob");
+    if (fs.existsSync(scorerPath)) {
+      console.log("deleting scorer..");
+      fs.unlinkSync(scorerPath);
+    }
 
-var result = model.sttWithMetadata(audioBuffer, maxAlternates);
+    if (fs.existsSync(scorerPath)) {
+      console.log("deleting blob..");
+      fs.unlinkSync(blobPath);
+    }
 
-if (workerData.scorer) {
-  console.log("deleting scorer..");
-  deleteFile("/home/ubuntu/uploads/" + tmpname + "_scorer");
-}
+    var transcript = metadataToString(result, 0);
 
-console.log("deleting blob..");
-deleteFile("/home/ubuntu/uploads/" + tmpname + "_blob");
+    console.log("returning transcript..");
 
-var transcript = metadataToString(result, 0);
-
-console.log("returning transcript..");
-
-parentPort.postMessage({
-  transcript: transcript
-})
-
-function deleteFile(path) {
-  try {
-    fs.unlinkSync(path);
-  } catch (err) {
-    console.log(err);
+    process.send({
+      transcript: transcript,
+      id: message.value.id
+    });
   }
-}
+});
 
 function createModel(modelPath, scorerPath) {
   let model = new DeepSpeech.Model(modelPath);

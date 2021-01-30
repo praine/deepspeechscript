@@ -1,11 +1,6 @@
-/*************************************************
-    Standard imports
- **************************************************/
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const morgan = require('morgan');
-const _ = require('lodash');
 const app = express();
 const request = require("request");
 const fs = require('fs');
@@ -13,43 +8,8 @@ const http = require('http');
 const url = require('url');
 const fileUpload = require("express-fileupload");
 const nodefetch = require('node-fetch');
-const queue = require('express-queue');
-const queueMw = queue({
-  activeLimit: 1,
-  queuedLimit: 5,
-  rejectHandler: (req, res) => {
-    console.log("queue limit reached: rejecting request..");
-    var id;
-    if (req.body.hasOwnProperty("id")) {
-      id = req.body.id;
-    } else {
-      id = null;
-    }
-    res.send({
-      id: id,
-      result: "error",
-      message: 'Server busy'
-    });
-  }
-});
+const {ForkQueue} = require('node-fork-queue');
 
-const {
-  Worker
-} = require('worker_threads');
-
-function runService(workerData) {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(__dirname + '/deepspeech.js', {
-      workerData
-    });
-    worker.on('message', resolve);
-    worker.on('error', reject);
-    worker.on('exit', (code) => {
-      if (code !== 0)
-        reject(new Error(`Worker stopped with exit code ${code}`));
-    })
-  })
-}
 app.use(fileUpload({
   createParentPath: true
 }));
@@ -59,8 +19,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
-app.use(morgan('dev'));
-app.use(queueMw);
+
+// Initialize ForkQueue
+const queue = new ForkQueue({
+  processFilePath: `${__dirname}/deepspeech.js`,
+  maxPoolSize: 5,
+  minPoolSize: 2,
+  idleTimeoutMillis: 30000,
+});
 
 app.get("/", (req, res) => {
 
@@ -97,17 +63,29 @@ app.post('/stt', async function(req, res) {
     });
   }
 
-  var result = await runService({
-    blob: req.files.blob.data,
-    scorer: req.body.scorer
-  })
+  var tmpname = Math.random().toString(20).substr(2, 6);
+  var scorerPath = "/home/ubuntu/uploads/" + tmpname + "_scorer";
+  var blobPath = "/home/ubuntu/uploads/" + tmpname + "_blob";
 
-  writeLog("/stt: got result (" + result.transcript + ")", ip, req.body.origin);
+  if (req.body.scorer) {
+    var b64scorer = req.body.scorer;
+    var buf = Buffer.from(b64scorer, 'base64');
+    fs.writeFileSync(scorerPath, buf);
+  }
 
-  return res.send({
-    id: id,
-    result: "success",
-    transcript: result.transcript
+  fs.writeFileSync(blobPath, req.files.blob.data);
+
+  queue.push({
+    action: "start",
+    tmpname: tmpname,
+    id: id
+  }, function(response) {
+    writeLog("/stt: got result (" + result.transcript + ")", ip, req.body.origin);
+    return res.send({
+      id: response.id,
+      result: "success",
+      transcript: response.transcript
+    });
   });
 
 });
