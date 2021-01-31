@@ -85,7 +85,7 @@ app.post('/stt', function(req, res) {
     writeLog("/stt: got result (" + response.transcript + ")", response.ip, response.origin);
     return res.send({
       id: response.id,
-      result: "successx",
+      result: "success",
       transcript: response.transcript
     });
   });
