@@ -13,7 +13,7 @@ const {
 } = require('node-fork-queue');
 const queue = new ForkQueue({
   processFilePath: `${__dirname}/deepspeech.js`,
-  maxPoolSize: 5,
+  maxPoolSize: 2,
   minPoolSize: 2,
   idleTimeoutMillis: 30000,
 });
