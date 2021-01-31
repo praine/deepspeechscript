@@ -34,7 +34,7 @@ app.get("/", (req, res) => {
 
 });
 
-app.post('/stt', async function(req, res) {
+app.post('/stt', function(req, res) {
 
   var id;
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -85,7 +85,7 @@ app.post('/stt', async function(req, res) {
     writeLog("/stt: got result (" + response.transcript + ")", response.ip, response.origin);
     return res.send({
       id: response.id,
-      result: "success",
+      result: "successx",
       transcript: response.transcript
     });
   });
