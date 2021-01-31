@@ -1,40 +1,21 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const app = express();
-const request = require("request");
-const fs = require('fs');
-const http = require('http');
-const url = require('url');
-const fileUpload = require("express-fileupload");
-const nodefetch = require('node-fetch');
-const {
-  ForkQueue
-} = require('node-fork-queue');
-const queue = new ForkQueue({
-  processFilePath: `${__dirname}/deepspeech.js`,
-  maxPoolSize: 2,
-  minPoolSize: 2,
-  idleTimeoutMillis: 30000,
-});
+const DeepSpeech = require('deepspeech')
 
-app.use(fileUpload({
-  createParentPath: true
-}));
-app.options('*', cors())
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
+function createModel(modelPath, scorerPath) {
+  let model = new DeepSpeech.Model(modelPath);
+  model.enableExternalScorer(scorerPath);
+  return model;
+}
 
-app.get("/", (req, res) => {
+function metadataToString(all_metadata, idx) {
+  var transcript = all_metadata.transcripts[idx];
+  var retval = ""
+  for (var i = 0; i < transcript.tokens.length; ++i) {
+    retval += transcript.tokens[i].text;
+  }
+  return retval;
+}
 
-  return res.status(200).send();
-
-});
-
-app.post('/stt', function(req, res) {
+exports.handler = async (event) => {
 
   var id;
   var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -64,8 +45,8 @@ app.post('/stt', function(req, res) {
   }
 
   var tmpname = Math.random().toString(20).substr(2, 6);
-  var scorerPath = "/home/ubuntu/uploads/" + tmpname + "_scorer";
-  var blobPath = "/home/ubuntu/uploads/" + tmpname + "_blob";
+  var scorerPath = __dirname + "/" + tmpname + "_scorer";
+  var blobPath = __dirname + "/" + tmpname + "_blob";
 
   if (req.body.scorer) {
     var b64scorer = req.body.scorer;
@@ -75,46 +56,61 @@ app.post('/stt', function(req, res) {
 
   fs.writeFileSync(blobPath, req.files.blob.data);
 
-  queue.push({
-    action: "start",
-    tmpname: tmpname,
-    id: id,
-    origin: req.body.origin,
-    ip: ip
-  }, function(response) {
-    writeLog("/stt: got result (" + response.transcript + ")", response.ip, response.origin);
-    return res.send({
-      id: response.id,
-      result: "success",
-      transcript: response.transcript
-    });
-  });
+  console.log("starting recognition..");
 
-});
+  var model, beamWidth;
 
-const port = process.env.PORT || 3000;
+  if (fs.existsSync(scorerPath)) {
+    beamWidth = 500;
+    console.log("creating model with custom scorer..");
+    model = createModel(STD_MODEL, scorerPath);
+  } else {
+    beamWidth = 2000;
+    console.log("creating model with standard scorer..");
+    model = createModel(STD_MODEL, STD_SCORER);
+  }
 
-var server = http.createServer(app);
+  model.setBeamWidth(beamWidth);
 
-server.listen(port, () => console.log(`App is listening on port ${port}.`));
+  var maxAlternates = 1;
+  var audioBuffer = fs.readFileSync(blobPath);
+
+  var result = model.sttWithMetadata(audioBuffer, maxAlternates);
+
+  if (fs.existsSync(scorerPath)) {
+    console.log("deleting scorer..");
+    fs.unlinkSync(scorerPath);
+  }
+
+  if (fs.existsSync(blobPath)) {
+    console.log("deleting blob..");
+    fs.unlinkSync(blobPath);
+  }
+
+  var transcript = metadataToString(result, 0);
+
+  console.log("returning transcript..");
+
+  return transcript;
+};
 
 function writeLog(log, ip, origin) {
   console.log(log);
   nodefetch('http://ec2-18-183-39-101.ap-northeast-1.compute.amazonaws.com:3000/write_log', {
-      method: 'post',
-      body: JSON.stringify({
-        "log": log,
-        "ip": ip,
-        "origin": origin
-      }),
-      headers: {
-        'Content-Type': 'application/json'
-      },
-    })
-    .then(function(res) {
+    method: 'post',
+    body: JSON.stringify({
+      "log": log,
+      "ip": ip,
+      "origin": origin
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+  })
+    .then(function (res) {
       res.json()
     })
-    .then(function(json) {
+    .then(function (json) {
       //do something
     });
 }
